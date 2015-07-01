@@ -1,5 +1,10 @@
 <html>
   <body>
     <p>welcome to github streaks yoooo</p>
+    {{if .Login}}
+    <p>Welcome, {{.Login}}</p>
+    {{else}}
+    <p>Login with <a href="/login">GitHub</a>.</p>
+    {{end}}
   </body>
 </html>
