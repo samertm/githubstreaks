@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"text/template"
 
-	"github.com/burntsushi/toml"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
+	"github.com/samertm/githubstreaks/conf"
 	"github.com/zenazn/goji"
 	"github.com/zenazn/goji/web"
 	"golang.org/x/oauth2"
@@ -99,15 +99,10 @@ func getSession(c web.C) *sessions.Session {
 	return c.Env["session"].(*sessions.Session)
 }
 
-type User struct {
-	ID    int
-	Login string
-}
-
 var (
 	oauthConf = &oauth2.Config{
-		ClientID:     config.GitHubID,
-		ClientSecret: config.GitHubSecret,
+		ClientID:     conf.Config.GitHubID,
+		ClientSecret: conf.Config.GitHubSecret,
 		Scopes:       []string{"user:email"},
 		Endpoint:     githuboauth.Endpoint,
 	}
@@ -124,19 +119,6 @@ func applySessions(c *web.C, h http.Handler) http.Handler {
 }
 
 var store = sessions.NewCookieStore(sha256.New().Sum(nil)) // SAMER: Make this secure.
-
-type Config struct {
-	GitHubID     string
-	GitHubSecret string
-}
-
-var config Config
-
-func init() {
-	if _, err := toml.DecodeFile("conf.toml", &config); err != nil {
-		log.Fatalf("Error decoding conf: %s", err)
-	}
-}
 
 func main() {
 	// Serve static files.
