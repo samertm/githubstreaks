@@ -7,10 +7,12 @@ import (
 )
 
 type ConfigVars struct {
-	GitHubID     string
-	GitHubSecret string
-	PGDATABASE   string
-	PGUSER       string
+	GitHubID           string
+	GitHubSecret       string
+	BaseURL            string
+	PostgresDataSource string
+	SessionKey         string
+	OAuthStateString   string
 }
 
 var Config ConfigVars

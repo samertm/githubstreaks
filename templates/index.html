@@ -1,10 +1,15 @@
-<html>
-  <body>
-    <p>welcome to github streaks yoooo</p>
-    {{if .Login}}
-    <p>Welcome, {{.Login}}</p>
-    {{else}}
-    <p>Login with <a href="/login">GitHub</a>.</p>
-    {{end}}
-  </body>
-</html>
+{{define "body"}}
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      <p>welcome to github streaks yoooo</p>
+      {{if .Login}}
+      <p>Welcome, {{.Login}}</p>
+      <p>SAMER: turn this into the dashboard page.</p>
+      {{else}}
+      <p>Login with <a href="/login">GitHub</a>.</p>
+      {{end}}
+    </div>
+  </div>
+</div>
+{{end}}{{/* define "body" */}}
