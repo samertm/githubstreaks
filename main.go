@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/go-github/github"
 	"github.com/gorilla/context"
+	"github.com/gorilla/schema"
 	"github.com/samertm/githubstreaks/conf"
 	"github.com/zenazn/goji"
 	"github.com/zenazn/goji/web"
@@ -30,14 +31,23 @@ var indexTemplate = initializeTemplate("templates/index.html")
 
 type indexTemplateVars struct {
 	Login string
+	Email string
+
+	NeedEmail bool
 }
 
 func serveIndex(c web.C, w http.ResponseWriter, r *http.Request) error {
 	s := getSession(c)
-	u := getUser(s) // SAMER: Change to auth.
+	u := getUser(s)
 	v := indexTemplateVars{}
 	if u != nil {
 		v.Login = u.Login
+		// Check whether we need to ask for their email.
+		if !u.Email.Valid {
+			v.NeedEmail = true
+		} else {
+			v.Email = u.Email.String
+		}
 	}
 	return indexTemplate.Execute(w, v)
 }
@@ -57,7 +67,7 @@ func serveLogin(c web.C, w http.ResponseWriter, r *http.Request) error {
 	url := oauthConf.AuthCodeURL(oauthStateString, oauth2.AccessTypeOnline)
 	return HTTPRedirect{
 		To:   url,
-		Code: http.StatusTemporaryRedirect,
+		Code: http.StatusSeeOther,
 	}
 }
 
@@ -92,7 +102,36 @@ func serveGitHubCallback(c web.C, w http.ResponseWriter, r *http.Request) error 
 	}
 	return HTTPRedirect{
 		To:   "/",
-		Code: http.StatusTemporaryRedirect,
+		Code: http.StatusSeeOther,
+	}
+}
+
+type saveEmailForm struct {
+	Email string `schema:"email"`
+}
+
+func serveSaveEmail(c web.C, w http.ResponseWriter, r *http.Request) error {
+	s := getSession(c)
+	u := getUser(s)
+	if u == nil {
+		return fmt.Errorf("User is not authed")
+	}
+	if err := r.ParseForm(); err != nil {
+		return fmt.Errorf("Error parsing form: %s", err)
+	}
+	var form saveEmailForm
+	err := schema.NewDecoder().Decode(&form, r.PostForm)
+	if err != nil {
+		return fmt.Errorf("Error decoding form: %s", err)
+	}
+	if err := SetEmail(*u, form.Email); err != nil {
+		return fmt.Errorf("Error setting email: %s", err)
+	}
+	// Will this work? Change request?
+	r.Method = "GET"
+	return HTTPRedirect{
+		To:   "/",
+		Code: http.StatusSeeOther,
 	}
 }
 
@@ -123,5 +162,8 @@ func main() {
 	goji.Get("/group/:group_id", handler(serveGroup))
 	goji.Get("/login", handler(serveLogin))
 	goji.Get("/github_callback", handler(serveGitHubCallback))
+
+	goji.Post("/save_email", handler(serveSaveEmail))
+
 	goji.Serve()
 }

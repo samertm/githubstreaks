@@ -11,8 +11,10 @@ import (
 )
 
 type User struct {
-	ID          int            `db:"id"`
-	Login       string         `db:"login"`
+	ID    int    `db:"id"`
+	Login string `db:"login"`
+	// SAMER: Make this unique.
+	Email       sql.NullString `db:"email"`
 	AccessToken sql.NullString `db:"access_token"`
 	ExpiresOn   *time.Time     `db:"expires_on"`
 }
@@ -20,7 +22,8 @@ type User struct {
 var userSchema = `
 CREATE TABLE IF NOT EXISTS person (
   id SERIAL PRIMARY KEY,
-  login TEXT,
+  login TEXT NOT NULL,
+  email TEXT,
   access_token TEXT,
   expires_on TIMESTAMP
 )
@@ -79,6 +82,16 @@ func GetUser(us UserSpec) (User, error) {
 		return User{}, err
 	}
 	return u, nil
+}
+
+func SetEmail(u User, email string) error {
+	b := &db.Binder{}
+	query := "UPDATE person SET email = " + b.Bind(email) + " " +
+		"WHERE id = " + b.Bind(u.ID)
+	if _, err := db.DB.Exec(query, b.Items...); err != nil {
+		return err
+	}
+	return nil
 }
 
 func SetAccessToken(u User, token string, expiresIn string) error {

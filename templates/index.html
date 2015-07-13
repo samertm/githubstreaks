@@ -6,6 +6,15 @@
       {{if .Login}}
       <p>Welcome, {{.Login}}</p>
       <p>SAMER: turn this into the dashboard page.</p>
+      {{if .NeedEmail}}
+      <p>Plz give me ur email. :3 meow</p>
+      <form method="post" action="/save_email">
+        <input name="email">
+        <button class="btn-success btn-md">Register!</button>
+      </form>
+      {{else}}
+      <p>YAY YOUR EMAIL IS {{.Email}}.</p>
+      {{end}}{{/* if .NeedEmail */}}
       {{else}}
       <p>Login with <a href="/login">GitHub</a>.</p>
       {{end}}
