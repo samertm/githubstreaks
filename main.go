@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/google/go-github/github"
 	"github.com/gorilla/context"
@@ -52,23 +53,9 @@ func serveIndex(c web.C, w http.ResponseWriter, r *http.Request) error {
 	return indexTemplate.Execute(w, v)
 }
 
-var groupTemplate = initializeTemplate("templates/group.html")
-
-type groupTemplateVars struct {
-	GroupID string
-}
-
-func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
-	groupID := c.URLParams["group_id"]
-	return groupTemplate.Execute(w, groupTemplateVars{GroupID: groupID})
-}
-
 func serveLogin(c web.C, w http.ResponseWriter, r *http.Request) error {
 	url := oauthConf.AuthCodeURL(oauthStateString, oauth2.AccessTypeOnline)
-	return HTTPRedirect{
-		To:   url,
-		Code: http.StatusSeeOther,
-	}
+	return HTTPRedirect{To: url, Code: http.StatusSeeOther}
 }
 
 func serveGitHubCallback(c web.C, w http.ResponseWriter, r *http.Request) error {
@@ -100,10 +87,7 @@ func serveGitHubCallback(c web.C, w http.ResponseWriter, r *http.Request) error 
 	if err := s.Save(r, w); err != nil {
 		log.Println(err)
 	}
-	return HTTPRedirect{
-		To:   "/",
-		Code: http.StatusSeeOther,
-	}
+	return HTTPRedirect{To: "/", Code: http.StatusSeeOther}
 }
 
 type saveEmailForm struct {
@@ -127,12 +111,44 @@ func serveSaveEmail(c web.C, w http.ResponseWriter, r *http.Request) error {
 	if err := SetEmail(*u, form.Email); err != nil {
 		return fmt.Errorf("Error setting email: %s", err)
 	}
-	// Will this work? Change request?
-	r.Method = "GET"
-	return HTTPRedirect{
-		To:   "/",
-		Code: http.StatusSeeOther,
+	return HTTPRedirect{To: "/", Code: http.StatusSeeOther}
+}
+
+// SAMER: Add some auth-detecting middleware?
+func serveCreateGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
+	s := getSession(c)
+	u := getUser(s)
+	if u == nil {
+		return fmt.Errorf("User is not authed")
 	}
+	g, err := CreateGroup(*u)
+	if err != nil {
+		return err
+	}
+	return HTTPRedirect{To: GroupURL(g), Code: http.StatusSeeOther}
+}
+
+var groupTemplate = initializeTemplate("templates/group.html")
+
+type groupTemplateVars struct {
+	Login   string // SAMER: Add CommonTemplateVars.
+	GroupID int
+}
+
+// SAMER: The middleware should be storing the user in some struct
+// that's being passed forwards...
+func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
+	s := getSession(c)
+	u := getUser(s)
+	if u == nil {
+		return fmt.Errorf("User is not authed")
+	}
+	gid, err := strconv.Atoi(c.URLParams["group_id"]) // SAMER: Some type of type checking?
+	if err != nil {
+		return fmt.Errorf("Error parsing group_id %s: %s", c.URLParams["group_id"], err)
+	}
+	// SAMER: Check that the user is in the group.
+	return groupTemplate.Execute(w, groupTemplateVars{Login: u.Login, GroupID: gid})
 }
 
 var (
@@ -159,11 +175,12 @@ func main() {
 	goji.Use(context.ClearHandler)
 
 	goji.Get("/", handler(serveIndex))
-	goji.Get("/group/:group_id", handler(serveGroup))
 	goji.Get("/login", handler(serveLogin))
 	goji.Get("/github_callback", handler(serveGitHubCallback))
-
 	goji.Post("/save_email", handler(serveSaveEmail))
+
+	goji.Get("/group/:group_id", handler(serveGroup))
+	goji.Post("/create_group", handler(serveCreateGroup))
 
 	goji.Serve()
 }

@@ -109,3 +109,56 @@ func SetAccessToken(u User, token string, expiresIn string) error {
 	}
 	return nil
 }
+
+// SAMER: Pick another name.
+type Group struct {
+	ID int `db:"id"`
+	//UIDs []int `db:"uids"`
+	// SAMER: Group name?
+}
+
+var groupSchema = `
+CREATE TABLE IF NOT EXISTS cgroup (
+  id SERIAL PRIMARY KEY
+)`
+
+func init() {
+	db.DB.MustExec(groupSchema)
+}
+
+type UserGroup struct {
+	UID  int `db:"uid"`
+	CGID int `db:"cgid"`
+}
+
+var userGroupSchema = `
+CREATE TABLE IF NOT EXISTS user_cgroup (
+  uid INTEGER REFERENCES person (id),
+  cgid INTEGER REFERENCES cgroup (id)
+)`
+
+func init() {
+	db.DB.MustExec(userGroupSchema)
+}
+
+func CreateGroup(u User) (Group, error) {
+	b := &db.Binder{}
+	query := `
+WITH cg AS (
+  INSERT INTO cgroup(id) VALUES (DEFAULT) RETURNING *
+), i AS (
+  INSERT INTO user_cgroup(uid, cgid)
+    SELECT ` + b.Bind(u.ID) + `, id FROM cg
+)
+SELECT id FROM cg`
+	var g Group
+	if err := db.DB.Get(&g, query, b.Items...); err != nil {
+		return Group{}, fmt.Errorf("Error creating group for %s: %s", u.Login, err)
+	}
+	return g, nil
+}
+
+// SAMER: This should be baked into the router. Use gorilla.Mux?
+func GroupURL(g Group) string {
+	return "/group/" + strconv.Itoa(g.ID)
+}
