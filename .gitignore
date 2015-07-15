@@ -2,3 +2,4 @@ conf.toml
 conf.dev.toml
 conf.prod.toml
 bower_components
+*.test
