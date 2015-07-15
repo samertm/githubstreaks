@@ -31,8 +31,9 @@ func initializeTemplate(file string) *template.Template {
 var indexTemplate = initializeTemplate("templates/index.html")
 
 type indexTemplateVars struct {
-	Login string
-	Email string
+	Login  string
+	Email  string
+	Groups []Group
 
 	NeedEmail bool
 }
@@ -49,6 +50,11 @@ func serveIndex(c web.C, w http.ResponseWriter, r *http.Request) error {
 		} else {
 			v.Email = u.Email.String
 		}
+		gs, err := GetGroups(*u)
+		if err != nil {
+			return fmt.Errorf("Error getting groups: %s", err)
+		}
+		v.Groups = gs
 	}
 	return indexTemplate.Execute(w, v)
 }

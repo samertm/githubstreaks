@@ -20,6 +20,11 @@
         </form>
       </p>
       {{end}}{{/* if .NeedEmail */}}
+      {{if .Groups}}
+      {{range .Groups}}
+      <p>Group {{.ID}}</p>
+      {{end}}{{/* range .Groups */}}
+      {{end}}{{/* if .Groups */}}
       {{else}}
       <p>Login with <a href="/login">GitHub</a>.</p>
       {{end}}

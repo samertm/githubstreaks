@@ -162,3 +162,16 @@ SELECT id FROM cg`
 func GroupURL(g Group) string {
 	return "/group/" + strconv.Itoa(g.ID)
 }
+
+func GetGroups(u User) ([]Group, error) {
+	b := &db.Binder{}
+	query := `
+SELECT * FROM cgroup
+  WHERE id IN
+    (SELECT cgid FROM user_cgroup WHERE uid = ` + b.Bind(u.ID) + `)`
+	var gs []Group
+	if err := db.DB.Select(&gs, query, b.Items...); err != nil {
+		return nil, fmt.Errorf("Error retrieving groups for %s (%d): %s", u.Login, u.ID, err)
+	}
+	return gs, nil
+}
