@@ -1,9 +1,11 @@
-{{define "body"}}
+{% extends "base.html" %}
+
+{% block content %}
 <div class="container">
   <div class="row">
     <div class="col-md-12">
-      <p>Welcome to this group, {{.Login}}. Your group id is: {{.GroupID}}.</p>
+      <p>Welcome to this group, {{ v.User.Login }}. Your group id is: {{ v.GroupID }}.</p>
     </div>
   </div>
 </div>
-{{end}}{{/* define "body" */}}
+{% endblock %}

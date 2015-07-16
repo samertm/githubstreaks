@@ -1,34 +1,34 @@
-{{define "body"}}
+{% extends "base.html" %}
+
+{% block content %}
 <div class="container">
   <div class="row">
     <div class="col-md-12">
       <p>welcome to github streaks yoooo</p>
-      {{if .Login}}
-      <p>Welcome, {{.Login}}</p>
+      {% if v.User.Login != "" %}
+      <p>Welcome, {{ v.User.Login }}</p>
       <p>SAMER: turn this into the dashboard page.</p>
-      {{if .NeedEmail}}
+      {% if v.User.Email == "" %}
       <p>Plz give me ur email. :3 meow</p>
       <form method="post" action="/save_email">
         <input name="email">
         <button class="btn btn-md btn-success">Register!</button>
       </form>
-      {{else}}
-      <p>YAY YOUR EMAIL IS {{.Email}}.</p>
+      {% else %}
+      <p>YAY YOUR EMAIL IS {{ v.User.Email }}.</p>
       <p>
         <form method="post" action="/create_group">
           <button class="btn btn-md btn-success">Create Group</button>
         </form>
       </p>
-      {{end}}{{/* if .NeedEmail */}}
-      {{if .Groups}}
-      {{range .Groups}}
-      <p>Group {{.ID}}</p>
-      {{end}}{{/* range .Groups */}}
-      {{end}}{{/* if .Groups */}}
-      {{else}}
+      {% endif %}{# if needEmail #}
+      {% for group in v.User.Groups %}
+      <p><a href="placeholder">Group {{ group.ID }}</a></p>
+      {% endfor %}
+      {% endif %}{# if v.User.Login != "" #}
       <p>Login with <a href="/login">GitHub</a>.</p>
       {{end}}
     </div>
   </div>
 </div>
-{{end}}{{/* define "body" */}}
+{% endblock %}

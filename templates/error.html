@@ -1,3 +1,5 @@
-{{define "body"}}
-<p>Error {{.Code}}: {{.Message}}</p>
-{{end}}{{/* define "body" */}}
+{% extends "base.html" %}
+
+{% block content %}
+<p>Error {{ v.Error.Code }}: {{ v.Error.Message }}</p>
+{% endblock %}

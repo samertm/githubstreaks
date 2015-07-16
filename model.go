@@ -168,7 +168,8 @@ func GetGroups(u User) ([]Group, error) {
 	query := `
 SELECT * FROM cgroup
   WHERE id IN
-    (SELECT cgid FROM user_cgroup WHERE uid = ` + b.Bind(u.ID) + `)`
+    (SELECT cgid FROM user_cgroup WHERE uid = ` + b.Bind(u.ID) + `)
+ORDER BY id ASC`
 	var gs []Group
 	if err := db.DB.Select(&gs, query, b.Items...); err != nil {
 		return nil, fmt.Errorf("Error retrieving groups for %s (%d): %s", u.Login, u.ID, err)

@@ -102,10 +102,7 @@ func handleError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 	w.Header().Set("cache-control", "no-cache")
 	w.WriteHeader(code)
-	errorTemplate.Execute(w, errorTemplateVars{
-		Message: message,
-		Code:    code,
-	})
+	RenderTemplate(errorTemplate, w, errorTemplateVars{Message: message, Code: code})
 }
 
 func logError(c web.C, req *http.Request, err error, rv interface{}) {

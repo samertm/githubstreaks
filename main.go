@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/flosch/pongo2"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/context"
 	"github.com/gorilla/schema"
@@ -17,18 +18,20 @@ import (
 	githuboauth "golang.org/x/oauth2/github"
 )
 
-var errorTemplate = initializeTemplate("templates/error.html")
+var _ = pongo2.Must(pongo2.FromFile("templates/base.html"))
+
+var errorTemplate = pongo2.Must(pongo2.FromFile("templates/error.html"))
 
 type errorTemplateVars struct {
 	Message string
 	Code    int
 }
 
-func initializeTemplate(file string) *template.Template {
-	return template.Must(template.ParseFiles("templates/layout.html", file))
+func RenderTemplate(t *pongo2.Template, w io.Writer, data interface{}) error {
+	return t.ExecuteWriter(pongo2.Context{"vars": data}, w)
 }
 
-var indexTemplate = initializeTemplate("templates/index.html")
+var indexTemplate = pongo2.Must(pongo2.FromFile("templates/index.html"))
 
 type indexTemplateVars struct {
 	Login  string
@@ -56,7 +59,7 @@ func serveIndex(c web.C, w http.ResponseWriter, r *http.Request) error {
 		}
 		v.Groups = gs
 	}
-	return indexTemplate.Execute(w, v)
+	return RenderTemplate(indexTemplate, w, v)
 }
 
 func serveLogin(c web.C, w http.ResponseWriter, r *http.Request) error {
@@ -134,7 +137,7 @@ func serveCreateGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 	return HTTPRedirect{To: GroupURL(g), Code: http.StatusSeeOther}
 }
 
-var groupTemplate = initializeTemplate("templates/group.html")
+var groupTemplate = pongo2.Must(pongo2.FromFile("templates/group.html"))
 
 type groupTemplateVars struct {
 	Login   string // SAMER: Add CommonTemplateVars.
@@ -154,7 +157,7 @@ func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 		return fmt.Errorf("Error parsing group_id %s: %s", c.URLParams["group_id"], err)
 	}
 	// SAMER: Check that the user is in the group.
-	return groupTemplate.Execute(w, groupTemplateVars{Login: u.Login, GroupID: gid})
+	return RenderTemplate(groupTemplate, w, groupTemplateVars{Login: u.Login, GroupID: gid})
 }
 
 var (
