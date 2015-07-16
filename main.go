@@ -96,7 +96,7 @@ func serveGitHubCallback(c web.C, w http.ResponseWriter, r *http.Request) error 
 	if err != nil {
 		return fmt.Errorf("Error saving user to the database: %s", err)
 	}
-	s.Values[userIDSessionKey] = user.ID
+	s.Values[UIDSessionKey] = user.UID
 	if err := s.Save(r, w); err != nil {
 		log.Println(err)
 	}

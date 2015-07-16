@@ -23,7 +23,7 @@
       </p>
       {% endif %}{# if needEmail #}
       {% for group in v.Groups %}
-      <p><a href="{{ groupURL(group) }}">Group {{ group.ID }}</a></p>
+      <p><a href="{{ groupURL(group) }}">Group {{ group.GID }}</a></p>
       {% endfor %}
       {% else %}{# if v.Login != "" #}
       <p>Login with <a href="/login">GitHub</a>.</p>

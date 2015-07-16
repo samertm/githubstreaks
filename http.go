@@ -18,16 +18,16 @@ func absoluteURL(urlFragment string) string {
 	return conf.Config.BaseURL + "/" + strings.TrimPrefix(urlFragment, "/")
 }
 
-var userIDSessionKey = "user_id"
+var UIDSessionKey = "user_id"
 
 func getUser(s *sessions.Session) *User {
-	id, ok := s.Values[userIDSessionKey]
+	uid, ok := s.Values[UIDSessionKey]
 	if !ok {
 		return nil
 	}
-	u, err := GetUser(UserSpec{ID: id.(int)})
+	u, err := GetUser(UserSpec{UID: uid.(int)})
 	if err != nil {
-		log.Printf("Error getting user (id %d): %s\n", id, err)
+		log.Printf("Error getting user (uid %d): %s\n", uid, err)
 		return nil
 	}
 	return &u

@@ -6,13 +6,13 @@ package main
 // 	t.Error("HI")
 // 	b := &db.Binder{}
 // 	query := `
-// WITH cg AS (
-//   INSERT INTO cgroup(id) VALUES (DEFAULT) RETURNING *
+// WITH g AS (
+//   INSERT INTO "group"(gid) VALUES (DEFAULT) RETURNING *
 // ), i AS (
-//   INSERT INTO user_cgroup(uid, cgid)
-//     SELECT ` + b.Bind(1) + `, id FROM cg
+//   INSERT INTO user_group(uid, gid)
+//     SELECT ` + b.Bind(1) + `, gid FROM g
 // )
-// SELECT id FROM cg`
+// SELECT gid FROM g`
 // 	var g Group
 // 	err := db.DB.Get(&g, query, b.Items...)
 // 	log.Println(g, err)

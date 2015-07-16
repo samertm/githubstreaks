@@ -11,7 +11,7 @@ import (
 )
 
 type User struct {
-	ID    int    `db:"id"`
+	UID   int    `db:"uid"`
 	Login string `db:"login"`
 	// SAMER: Make this unique.
 	Email       sql.NullString `db:"email"`
@@ -20,8 +20,8 @@ type User struct {
 }
 
 var userSchema = `
-CREATE TABLE IF NOT EXISTS person (
-  id SERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS "user" (
+  uid SERIAL PRIMARY KEY,
   login TEXT NOT NULL,
   email TEXT,
   access_token TEXT,
@@ -34,7 +34,7 @@ func init() {
 }
 
 type UserSpec struct {
-	ID    int
+	UID   int
 	Login string
 }
 
@@ -67,9 +67,9 @@ func GetUser(us UserSpec) (User, error) {
 		col string
 		val string
 	}{}
-	if us.ID != 0 {
-		where.col = "id"
-		where.val = strconv.Itoa(us.ID)
+	if us.UID != 0 {
+		where.col = "uid"
+		where.val = strconv.Itoa(us.UID)
 	} else if us.Login != "" {
 		where.col = "login"
 		where.val = us.Login
@@ -87,7 +87,7 @@ func GetUser(us UserSpec) (User, error) {
 func SetEmail(u User, email string) error {
 	b := &db.Binder{}
 	query := "UPDATE person SET email = " + b.Bind(email) + " " +
-		"WHERE id = " + b.Bind(u.ID)
+		"WHERE uid = " + b.Bind(u.UID)
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func SetAccessToken(u User, token string, expiresIn string) error {
 	b := &db.Binder{}
 	query := "UPDATE person SET access_token = " + b.Bind(token) + ", " +
 		"expires_on = " + b.Bind(expiresOn) + " " +
-		"WHERE id = " + b.Bind(u.ID)
+		"WHERE uid = " + b.Bind(u.UID)
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
 		return err
 	}
@@ -112,14 +112,14 @@ func SetAccessToken(u User, token string, expiresIn string) error {
 
 // SAMER: Pick another name.
 type Group struct {
-	ID int `db:"id"`
+	GID int `db:"gid"`
 	//UIDs []int `db:"uids"`
 	// SAMER: Group name?
 }
 
 var groupSchema = `
-CREATE TABLE IF NOT EXISTS cgroup (
-  id SERIAL PRIMARY KEY
+CREATE TABLE IF NOT EXISTS "group" (
+  gid SERIAL PRIMARY KEY
 )`
 
 func init() {
@@ -127,14 +127,14 @@ func init() {
 }
 
 type UserGroup struct {
-	UID  int `db:"uid"`
-	CGID int `db:"cgid"`
+	UID int `db:"uid"`
+	GID int `db:"gid"`
 }
 
 var userGroupSchema = `
-CREATE TABLE IF NOT EXISTS user_cgroup (
-  uid INTEGER REFERENCES person (id),
-  cgid INTEGER REFERENCES cgroup (id)
+CREATE TABLE IF NOT EXISTS user_group (
+  uid INTEGER REFERENCES "user" (uid),
+  gid INTEGER REFERENCES "group" (gid)
 )`
 
 func init() {
@@ -144,13 +144,13 @@ func init() {
 func CreateGroup(u User) (Group, error) {
 	b := &db.Binder{}
 	query := `
-WITH cg AS (
-  INSERT INTO cgroup(id) VALUES (DEFAULT) RETURNING *
+WITH g AS (
+  INSERT INTO "group"(gid) VALUES (DEFAULT) RETURNING *
 ), i AS (
-  INSERT INTO user_cgroup(uid, cgid)
-    SELECT ` + b.Bind(u.ID) + `, id FROM cg
+  INSERT INTO user_group(uid, gid)
+    SELECT ` + b.Bind(u.UID) + `, gid FROM g
 )
-SELECT id FROM cg`
+SELECT gid FROM g`
 	var g Group
 	if err := db.DB.Get(&g, query, b.Items...); err != nil {
 		return Group{}, fmt.Errorf("Error creating group for %s: %s", u.Login, err)
@@ -160,19 +160,24 @@ SELECT id FROM cg`
 
 // SAMER: This should be baked into the router. Use gorilla.Mux?
 func GroupURL(g Group) string {
-	return "/group/" + strconv.Itoa(g.ID)
+	return "/group/" + strconv.Itoa(g.GID)
 }
 
 func GetGroups(u User) ([]Group, error) {
 	b := &db.Binder{}
 	query := `
-SELECT * FROM cgroup
-  WHERE id IN
-    (SELECT cgid FROM user_cgroup WHERE uid = ` + b.Bind(u.ID) + `)
-ORDER BY id ASC`
+SELECT * FROM "group"
+  WHERE gid IN
+    (SELECT gid FROM user_group WHERE uid = ` + b.Bind(u.UID) + `)
+ORDER BY gid ASC`
 	var gs []Group
 	if err := db.DB.Select(&gs, query, b.Items...); err != nil {
-		return nil, fmt.Errorf("Error retrieving groups for %s (%d): %s", u.Login, u.ID, err)
+		return nil, fmt.Errorf("Error retrieving groups for %s (%d): %s", u.Login, u.UID, err)
 	}
 	return gs, nil
+}
+
+type Event struct {
+	ID       int `db:"id"`
+	GitHubID int `db:"github_id"`
 }
