@@ -11,6 +11,9 @@ db-reset:
 	psql -h localhost -U ghs -c "drop schema public cascade"
 	psql -h localhost -U ghs -c "create schema public"
 
+psql:
+	psql -h localhost -U ghs
+
 test:
 	go test $(ARGS) ./...
 

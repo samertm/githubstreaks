@@ -22,10 +22,10 @@ type User struct {
 var userSchema = `
 CREATE TABLE IF NOT EXISTS "user" (
   uid SERIAL PRIMARY KEY,
-  login TEXT NOT NULL,
-  email TEXT,
-  access_token TEXT,
-  expires_on TIMESTAMP
+  login text NOT NULL,
+  email text,
+  access_token text,
+  expires_on timestamp
 )
 `
 
@@ -54,7 +54,7 @@ func GetCreateUser(login string) (User, error) {
 }
 
 func CreateUser(login string) error {
-	query := "INSERT INTO person(login) VALUES ($1)"
+	query := `INSERT INTO "user"(login) VALUES ($1)`
 	if _, err := db.DB.Exec(query, login); err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func GetUser(us UserSpec) (User, error) {
 		return User{}, errors.New("Empty user spec")
 	}
 
-	err := db.DB.Get(&u, fmt.Sprintf("SELECT * from person where %s=$1", where.col), where.val)
+	err := db.DB.Get(&u, fmt.Sprintf(`SELECT * from "user" WHERE %s=$1`, where.col), where.val)
 	if err != nil {
 		return User{}, err
 	}
@@ -86,7 +86,7 @@ func GetUser(us UserSpec) (User, error) {
 
 func SetEmail(u User, email string) error {
 	b := &db.Binder{}
-	query := "UPDATE person SET email = " + b.Bind(email) + " " +
+	query := `UPDATE "user" SET email = ` + b.Bind(email) + " " +
 		"WHERE uid = " + b.Bind(u.UID)
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
 		return err
@@ -101,7 +101,7 @@ func SetAccessToken(u User, token string, expiresIn string) error {
 	}
 	expiresOn := time.Now().Add(time.Duration(e) * time.Second)
 	b := &db.Binder{}
-	query := "UPDATE person SET access_token = " + b.Bind(token) + ", " +
+	query := `UPDATE "user" SET access_token = ` + b.Bind(token) + ", " +
 		"expires_on = " + b.Bind(expiresOn) + " " +
 		"WHERE uid = " + b.Bind(u.UID)
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
@@ -133,8 +133,8 @@ type UserGroup struct {
 
 var userGroupSchema = `
 CREATE TABLE IF NOT EXISTS user_group (
-  uid INTEGER REFERENCES "user" (uid),
-  gid INTEGER REFERENCES "group" (gid)
+  uid integer REFERENCES "user" (uid),
+  gid integer REFERENCES "group" (gid)
 )`
 
 func init() {
