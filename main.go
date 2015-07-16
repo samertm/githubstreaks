@@ -28,7 +28,7 @@ type errorTemplateVars struct {
 }
 
 func RenderTemplate(t *pongo2.Template, w io.Writer, data interface{}) error {
-	return t.ExecuteWriter(pongo2.Context{"vars": data}, w)
+	return t.ExecuteWriter(pongo2.Context{"v": data}, w)
 }
 
 var indexTemplate = pongo2.Must(pongo2.FromFile("templates/index.html"))

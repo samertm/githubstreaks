@@ -5,29 +5,29 @@
   <div class="row">
     <div class="col-md-12">
       <p>welcome to github streaks yoooo</p>
-      {% if v.User.Login != "" %}
-      <p>Welcome, {{ v.User.Login }}</p>
+      {% if v.Login != "" %}
+      <p>Welcome, {{ v.Login }}</p>
       <p>SAMER: turn this into the dashboard page.</p>
-      {% if v.User.Email == "" %}
+      {% if v.Email == "" %}
       <p>Plz give me ur email. :3 meow</p>
       <form method="post" action="/save_email">
         <input name="email">
         <button class="btn btn-md btn-success">Register!</button>
       </form>
       {% else %}
-      <p>YAY YOUR EMAIL IS {{ v.User.Email }}.</p>
+      <p>YAY YOUR EMAIL IS {{ v.Email }}.</p>
       <p>
         <form method="post" action="/create_group">
           <button class="btn btn-md btn-success">Create Group</button>
         </form>
       </p>
       {% endif %}{# if needEmail #}
-      {% for group in v.User.Groups %}
+      {% for group in v.Groups %}
       <p><a href="placeholder">Group {{ group.ID }}</a></p>
       {% endfor %}
-      {% endif %}{# if v.User.Login != "" #}
+      {% else %}{# if v.Login != "" #}
       <p>Login with <a href="/login">GitHub</a>.</p>
-      {{end}}
+      {% endif %}{# if v.Login != "" #}
     </div>
   </div>
 </div>
