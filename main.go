@@ -144,8 +144,9 @@ func serveCreateGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 var groupTemplate = pongo2.Must(pongo2.FromFile("templates/group.html"))
 
 type groupTemplateVars struct {
-	Login   string // SAMER: Add CommonTemplateVars.
-	GroupID int
+	Login      string // SAMER: Add CommonTemplateVars.
+	GroupID    int
+	AllCommits []Commit
 }
 
 // SAMER: The middleware should be storing the user in some struct
@@ -160,8 +161,20 @@ func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return fmt.Errorf("Error parsing group_id %s: %s", c.URLParams["group_id"], err)
 	}
+	g, err := GetGroup(gid)
+	if err != nil {
+		return err
+	}
+	cs, err := GetGroupAllCommits(g)
+	if err != nil {
+		return err
+	}
 	// SAMER: Check that the user is in the group.
-	return RenderTemplate(groupTemplate, w, groupTemplateVars{Login: u.Login, GroupID: gid})
+	return RenderTemplate(groupTemplate, w, groupTemplateVars{
+		Login:      u.Login,
+		GroupID:    gid,
+		AllCommits: cs,
+	})
 }
 
 var (
@@ -173,6 +186,14 @@ var (
 	}
 	oauthStateString = conf.Config.OAuthStateString
 )
+
+func UnauthedGitHubClient() *github.Client {
+	t := github.UnauthenticatedRateLimitedTransport{
+		ClientID:     oauthConf.ClientID,
+		ClientSecret: oauthConf.ClientSecret,
+	}
+	return github.NewClient(t.Client())
+}
 
 func main() {
 	// Serve static files.

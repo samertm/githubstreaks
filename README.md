@@ -12,3 +12,7 @@ $ createdb githubstreaks
 # Idea
 
 Can I create a dockerfile for a dev postgres thingy to run?
+
+# TODO
+ - Make Setup accurate.
+ - Get linter/test thingy for django templates.
