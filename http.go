@@ -7,12 +7,25 @@ import (
 	"log"
 	"net/http"
 	"runtime/debug"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/sessions"
 	"github.com/samertm/githubstreaks/conf"
 	"github.com/zenazn/goji/web"
 )
+
+func getParamInt(c web.C, param string) (int, error) {
+	v, ok := c.URLParams[param]
+	if !ok {
+		return 0, fmt.Errorf("URLParam %s does not exist in route.", param)
+	}
+	i, err := strconv.Atoi(v)
+	if err != nil {
+		return 0, fmt.Errorf("error parsing URLParam %s: %s", v, err)
+	}
+	return i, nil
+}
 
 func absoluteURL(urlFragment string) string {
 	return conf.Config.BaseURL + "/" + strings.TrimPrefix(urlFragment, "/")

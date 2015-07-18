@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/flosch/pongo2"
 	"github.com/google/go-github/github"
@@ -145,16 +144,14 @@ type groupTemplateVars struct {
 	AllCommits []Commit
 }
 
-// SAMER: The middleware should be storing the user in some struct
-// that's being passed forwards...
 func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 	a := NewApp(c)
 	if err := a.Authed(); err != nil {
 		return err
 	}
-	gid, err := strconv.Atoi(c.URLParams["group_id"]) // SAMER: Some type of type checking?
+	gid, err := getParamInt(c, "group_id")
 	if err != nil {
-		return fmt.Errorf("Error parsing group_id %s: %s", c.URLParams["group_id"], err)
+		return err
 	}
 	g, err := GetGroup(gid)
 	if err != nil {
@@ -170,6 +167,22 @@ func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 		GroupID:    gid,
 		AllCommits: cs,
 	})
+}
+
+func serveGroupRefresh(c web.C, w http.ResponseWriter, r *http.Request) error {
+	gid, err := getParamInt(c, "group_id")
+	if err != nil {
+		return err
+	}
+	// Now, refresh group commits..
+	g, err := GetGroup(gid)
+	if err != nil {
+		return err
+	}
+	if err := UpdateGroupCommits(g); err != nil {
+		return err
+	}
+	return nil
 }
 
 var (
@@ -210,6 +223,7 @@ func main() {
 	goji.Post("/save_email", handler(serveSaveEmail))
 
 	goji.Post("/group/create", handler(serveGroupCreate))
+	goji.Post("/group/:group_id/refresh", handler(serveGroupRefresh))
 	goji.Get("/group/:group_id", handler(serveGroup))
 
 	goji.Serve()

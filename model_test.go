@@ -24,15 +24,15 @@ SELECT gid FROM g`
 	log.Println(g, err)
 }
 
-// Manually test UpdateCommits.
-func TestUpdateCommits(t *testing.T) {
+// Manually test UserUpdateCommits.
+func TestUserUpdateCommits(t *testing.T) {
 	t.SkipNow()
 	u, err := GetUser(UserSpec{Login: "samertm"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if err := UpdateCommits(u); err != nil {
+	if err := UserUpdateCommits(u); err != nil {
 		t.Fatal(err)
 	}
 }

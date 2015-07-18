@@ -283,6 +283,21 @@ func GetGroupAllCommits(g Group) ([]Commit, error) {
 	return cs, nil
 }
 
+// SAMER: Make these methods... Or have a consistant naming scheme +
+// explain in a doc comment.
+func UpdateGroupCommits(g Group) error {
+	us, err := GetGroupUsers(g)
+	if err != nil {
+		return err
+	}
+	for _, u := range us {
+		if err := UpdateUserCommits(u); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type Commit struct {
 	SHA        string    `db:"sha"`
 	UID        int       `db:"uid"`
@@ -348,7 +363,7 @@ func SplitRepoName(fullRepoName string) (userName, repoName string) {
 	return s[0], s[1]
 }
 
-func UpdateCommits(u User) error {
+func UpdateUserCommits(u User) error {
 	t, err := UpdateTime(u)
 	if err != nil {
 		return err

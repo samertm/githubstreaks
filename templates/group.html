@@ -5,6 +5,7 @@
   <div class="row">
     <div class="col-md-12">
       <p>Welcome to this group, {{ v.Login }}. Your group id is: {{ v.GroupID }}.</p>
+      <button id="refresh" class="btn btn-md btn-success">Refresh (dev)</button>
       {% for c in v.AllCommits %}
         <p>Commit: {{ c.SHA }}</p>
       {% endfor %}
