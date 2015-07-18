@@ -125,7 +125,7 @@ func serveSaveEmail(c web.C, w http.ResponseWriter, r *http.Request) error {
 	return HTTPRedirect{To: "/", Code: http.StatusSeeOther}
 }
 
-func serveCreateGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
+func serveGroupCreate(c web.C, w http.ResponseWriter, r *http.Request) error {
 	a := NewApp(c)
 	if err := a.Authed(); err != nil {
 		return err
@@ -206,10 +206,11 @@ func main() {
 	goji.Get("/", handler(serveIndex))
 	goji.Get("/login", handler(serveLogin))
 	goji.Get("/github_callback", handler(serveGitHubCallback))
+	// SAMER: Make this POST /user/email.
 	goji.Post("/save_email", handler(serveSaveEmail))
 
+	goji.Post("/group/create", handler(serveGroupCreate))
 	goji.Get("/group/:group_id", handler(serveGroup))
-	goji.Post("/create_group", handler(serveCreateGroup))
 
 	goji.Serve()
 }
