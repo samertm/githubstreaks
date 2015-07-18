@@ -46,18 +46,17 @@ type indexTemplateVars struct {
 }
 
 func serveIndex(c web.C, w http.ResponseWriter, r *http.Request) error {
-	s := getSession(c)
-	u := getUser(s)
+	a := NewApp(c)
 	v := indexTemplateVars{}
-	if u != nil {
-		v.Login = u.Login
+	if a.User != nil {
+		v.Login = a.User.Login
 		// Check whether we need to ask for their email.
-		if !u.Email.Valid {
+		if !a.User.Email.Valid {
 			v.NeedEmail = true
 		} else {
-			v.Email = u.Email.String
+			v.Email = a.User.Email.String
 		}
-		gs, err := GetGroups(*u)
+		gs, err := GetGroups(*a.User)
 		if err != nil {
 			return fmt.Errorf("Error getting groups: %s", err)
 		}
@@ -72,7 +71,7 @@ func serveLogin(c web.C, w http.ResponseWriter, r *http.Request) error {
 }
 
 func serveGitHubCallback(c web.C, w http.ResponseWriter, r *http.Request) error {
-	s := getSession(c)
+	a := NewApp(c)
 	state := r.FormValue("state")
 	if state != oauthStateString {
 		return fmt.Errorf("invalid oauth state, expected '%s', got '%s'\n", oauthStateString, state)
@@ -96,8 +95,8 @@ func serveGitHubCallback(c web.C, w http.ResponseWriter, r *http.Request) error 
 	if err != nil {
 		return fmt.Errorf("Error saving user to the database: %s", err)
 	}
-	s.Values[UIDSessionKey] = user.UID
-	if err := s.Save(r, w); err != nil {
+	a.Session.Values[UIDSessionKey] = user.UID
+	if err := a.Session.Save(r, w); err != nil {
 		log.Println(err)
 	}
 	return HTTPRedirect{To: "/", Code: http.StatusSeeOther}
@@ -108,9 +107,8 @@ type saveEmailForm struct {
 }
 
 func serveSaveEmail(c web.C, w http.ResponseWriter, r *http.Request) error {
-	s := getSession(c)
-	u := getUser(s)
-	if u == nil {
+	a := NewApp(c)
+	if err := a.Authed(); err != nil {
 		return fmt.Errorf("User is not authed")
 	}
 	if err := r.ParseForm(); err != nil {
@@ -121,20 +119,18 @@ func serveSaveEmail(c web.C, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return fmt.Errorf("Error decoding form: %s", err)
 	}
-	if err := SetEmail(*u, form.Email); err != nil {
+	if err := SetEmail(*a.User, form.Email); err != nil {
 		return fmt.Errorf("Error setting email: %s", err)
 	}
 	return HTTPRedirect{To: "/", Code: http.StatusSeeOther}
 }
 
-// SAMER: Add some auth-detecting middleware?
 func serveCreateGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
-	s := getSession(c)
-	u := getUser(s)
-	if u == nil {
-		return fmt.Errorf("User is not authed")
+	a := NewApp(c)
+	if err := a.Authed(); err != nil {
+		return err
 	}
-	g, err := CreateGroup(*u)
+	g, err := CreateGroup(*a.User)
 	if err != nil {
 		return err
 	}
@@ -152,10 +148,9 @@ type groupTemplateVars struct {
 // SAMER: The middleware should be storing the user in some struct
 // that's being passed forwards...
 func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
-	s := getSession(c)
-	u := getUser(s)
-	if u == nil {
-		return fmt.Errorf("User is not authed")
+	a := NewApp(c)
+	if err := a.Authed(); err != nil {
+		return err
 	}
 	gid, err := strconv.Atoi(c.URLParams["group_id"]) // SAMER: Some type of type checking?
 	if err != nil {
@@ -171,7 +166,7 @@ func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 	}
 	// SAMER: Check that the user is in the group.
 	return RenderTemplate(groupTemplate, w, groupTemplateVars{
-		Login:      u.Login,
+		Login:      a.User.Login,
 		GroupID:    gid,
 		AllCommits: cs,
 	})
