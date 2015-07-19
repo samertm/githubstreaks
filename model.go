@@ -351,12 +351,14 @@ func GetCommit(sha string) (Commit, error) {
 
 var sqlNotFound = "no rows in result set"
 
-func CommitExists(sha string) bool {
-	_, err := GetCommit(sha)
-	if err != nil {
-		return strings.Contains(err.Error(), sqlNotFound)
+func CommitExists(sha string) (bool, error) {
+	if _, err := GetCommit(sha); err != nil {
+		if strings.Contains(err.Error(), sqlNotFound) {
+			return false, nil
+		}
+		return false, err
 	}
-	return true
+	return true, nil
 }
 
 // SAMER: Use functions or methods.
@@ -422,7 +424,7 @@ type GitHubCommitRepo struct {
 func FetchRecentCommits(u User, until time.Time) ([]GitHubCommitRepo, error) {
 	t := NewETagTransport(u.ETag.String)
 	var functionFinishedSuccessfully bool // Set this before returning success.
-	go func() {
+	defer func() {
 		etag := t.GetNewETag()
 		if functionFinishedSuccessfully {
 			if err := SetETag(u, etag); err != nil {
@@ -447,7 +449,11 @@ func FetchRecentCommits(u User, until time.Time) ([]GitHubCommitRepo, error) {
 		for _, pec := range PushEventCommits {
 			// Don't fetch the commit if we already have a
 			// copy of it in the database.
-			if CommitExists(*pec.SHA) {
+			exists, err := CommitExists(*pec.SHA)
+			if err != nil {
+				return nil, err
+			}
+			if exists {
 				continue
 			}
 			c, _, err := client.Git.GetCommit(repoUser, repoName, *pec.SHA)
