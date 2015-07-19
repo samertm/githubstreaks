@@ -28,7 +28,9 @@ type errorTemplateVars struct {
 }
 
 var baseContext = pongo2.Context{
-	"groupURL": GroupURL,
+	"GroupURL":           GroupURL,
+	"ShortSHA":           ShortSHA,
+	"CommitMessageTitle": CommitMessageTitle,
 }
 
 func RenderTemplate(t *pongo2.Template, w io.Writer, data interface{}) error {
@@ -140,9 +142,9 @@ func serveGroupCreate(c web.C, w http.ResponseWriter, r *http.Request) error {
 var groupTemplate = pongo2.Must(pongo2.FromFile("templates/group.html"))
 
 type groupTemplateVars struct {
-	Login      string // SAMER: Add CommonTemplateVars.
-	GroupID    int
-	AllCommits []Commit
+	Login        string // SAMER: Add CommonTemplateVars.
+	GroupID      int
+	CommitGroups []CommitGroup
 }
 
 func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
@@ -164,9 +166,9 @@ func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 	}
 	// SAMER: Check that the user is in the group.
 	return RenderTemplate(groupTemplate, w, groupTemplateVars{
-		Login:      a.User.Login,
-		GroupID:    gid,
-		AllCommits: cs,
+		Login:        a.User.Login,
+		GroupID:      gid,
+		CommitGroups: CommitGroups(cs),
 	})
 }
 

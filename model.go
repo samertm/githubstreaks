@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -353,6 +354,61 @@ var sqlNotFound = "no rows in result set"
 func CommitExists(sha string) bool {
 	_, err := GetCommit(sha)
 	return strings.Contains(err.Error(), sqlNotFound)
+}
+
+// SAMER: Use functions or methods.
+func ShortSHA(sha string) string {
+	if len(sha) < 7 {
+		return sha
+	}
+	return sha[:8]
+}
+
+func CommitMessageTitle(m string) string {
+	return strings.Split(m, "\n")[0]
+}
+
+type SortableCommits []Commit
+
+func (s SortableCommits) Len() int           { return len(s) }
+func (s SortableCommits) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s SortableCommits) Less(i, j int) bool { return s[i].AuthorDate.After(s[j].AuthorDate) }
+
+type CommitGroup struct {
+	RepoName string
+	Commits  []Commit
+}
+
+type SortableCommitGroups []CommitGroup
+
+func (s SortableCommitGroups) Len() int      { return len(s) }
+func (s SortableCommitGroups) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s SortableCommitGroups) Less(i, j int) bool {
+	return s[i].Commits[0].AuthorDate.After(s[j].Commits[0].AuthorDate)
+}
+
+// CommitGroups groups commits by repo, sorted by the most recent
+// commits.
+func CommitGroups(commits []Commit) []CommitGroup {
+	// First, sort commits into CommitGroups by repo.
+	cgm := make(map[string]CommitGroup)
+	for _, c := range commits {
+		// This is essentially a no-op if cg.RepoName is not empty.
+		cg := cgm[c.RepoName]
+		cg.RepoName = c.RepoName
+		cg.Commits = append(cg.Commits, c)
+		cgm[c.RepoName] = cg
+	}
+	// Now, we sort each of the commit arrays by time and stuff
+	// them into a slice.
+	cgs := make([]CommitGroup, 0, len(cgm))
+	for _, cg := range cgm {
+		sort.Sort(SortableCommits(cg.Commits))
+		cgs = append(cgs, cg)
+	}
+	// Finally, we sort the CommitGroups.
+	sort.Sort(SortableCommitGroups(cgs))
+	return cgs
 }
 
 type GitHubCommitRepo struct {
