@@ -124,12 +124,9 @@ func handleError(w http.ResponseWriter, r *http.Request, err error) {
 func logError(c web.C, req *http.Request, err error, rv interface{}) {
 	if err != nil {
 		buf := &bytes.Buffer{}
-		fmt.Fprintf(buf, "Error serving %s: ", req.URL)
-		switch e := err.(type) {
-		case *errors.Error:
-			fmt.Fprint(buf, "\n"+formatStackFrames(e.StackFrames(), handlerServeFnName))
-		default:
-			fmt.Fprint(buf, e.Error()+"\n")
+		fmt.Fprintf(buf, "Error serving %s: %s\n", req.URL, err)
+		if e, ok := err.(*errors.Error); ok {
+			fmt.Fprint(buf, formatStackFrames(e.StackFrames(), handlerServeFnName))
 		}
 		if rv != nil {
 			fmt.Fprintln(buf, rv)
