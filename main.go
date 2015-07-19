@@ -28,9 +28,13 @@ type errorTemplateVars struct {
 }
 
 var baseContext = pongo2.Context{
-	"AbsoluteURL":        AbsoluteURL,
-	"GroupURL":           GroupURL,
-	"GroupShareURL":      GroupShareURL,
+	"AbsoluteURL":   AbsoluteURL,
+	"GroupURL":      GroupURL,
+	"GroupShareURL": GroupShareURL,
+	"GetGroupUsers": func(g Group) []User {
+		us, _ := GetGroupUsers(g)
+		return us
+	},
 	"ShortSHA":           ShortSHA,
 	"CommitMessageTitle": CommitMessageTitle,
 }
