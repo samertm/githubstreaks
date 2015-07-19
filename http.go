@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -9,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-errors/errors"
 	"github.com/gorilla/sessions"
 	"github.com/samertm/githubstreaks/conf"
 	"github.com/zenazn/goji/web"
@@ -18,11 +18,11 @@ import (
 func getParamInt(c web.C, param string) (int, error) {
 	v, ok := c.URLParams[param]
 	if !ok {
-		return 0, errors.Errorf("URLParam %s does not exist in route.", param)
+		return 0, fmt.Errorf("URLParam %s does not exist in route.", param)
 	}
 	i, err := strconv.Atoi(v)
 	if err != nil {
-		return 0, errors.Errorf("error parsing URLParam %s: %s", v, err)
+		return 0, fmt.Errorf("error parsing URLParam %s: %s", v, err)
 	}
 	return i, nil
 }
@@ -81,9 +81,6 @@ func (e HTTPRedirect) Error() string {
 
 type handler func(web.C, http.ResponseWriter, *http.Request) error
 
-// For logError.
-var handlerServeFnName = "handler.ServeHTTPC"
-
 func (h handler) ServeHTTPC(c web.C, w http.ResponseWriter, r *http.Request) {
 	var err error
 
@@ -123,16 +120,14 @@ func handleError(w http.ResponseWriter, r *http.Request, err error) {
 
 func logError(c web.C, req *http.Request, err error, rv interface{}) {
 	if err != nil {
-		buf := &bytes.Buffer{}
-		fmt.Fprintf(buf, "Error serving %s: ", req.URL)
-		switch e := err.(type) {
-		case *errors.Error:
-			fmt.Fprint(buf, "\n"+formatStackFrames(e.StackFrames(), handlerServeFnName))
-		default:
-			fmt.Fprint(buf, e.Error()+"\n")
-		}
+		var buf bytes.Buffer
+		fmt.Fprintf(&buf, "Error serving %s: %s\n",
+			req.URL,
+			// SAMER: Wait for PR to merge.
+			//c.Env[web.MatchKey].(web.Match).Pattern.String(),
+			err)
 		if rv != nil {
-			fmt.Fprintln(buf, rv)
+			fmt.Fprintln(&buf, rv)
 			buf.Write(debug.Stack())
 		}
 		log.Print(buf.String())

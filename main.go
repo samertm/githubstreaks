@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/flosch/pongo2"
-	"github.com/go-errors/errors"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/context"
 	"github.com/gorilla/schema"
@@ -58,7 +57,7 @@ func serveIndex(c web.C, w http.ResponseWriter, r *http.Request) error {
 		}
 		gs, err := GetGroups(*a.User)
 		if err != nil {
-			return wrapErrorf(err, "error getting groups for User %d", a.User.UID)
+			return fmt.Errorf("Error getting groups: %s", err)
 		}
 		v.Groups = gs
 	}
@@ -74,30 +73,30 @@ func serveGitHubCallback(c web.C, w http.ResponseWriter, r *http.Request) error 
 	a := NewApp(c)
 	state := r.FormValue("state")
 	if state != oauthStateString {
-		return errors.Errorf("invalid oauth state, expected '%s', got '%s'\n", oauthStateString, state)
+		return fmt.Errorf("invalid oauth state, expected '%s', got '%s'\n", oauthStateString, state)
 	}
 
 	code := r.FormValue("code")
 	token, err := oauthConf.Exchange(oauth2.NoContext, code)
 	if err != nil {
-		return wrapErrorf(err, "oauthConf.Exchange() failed")
+		return fmt.Errorf("oauthConf.Exchange() failed with '%s'\n", err)
 	}
 
 	oauthClient := oauthConf.Client(oauth2.NoContext, token)
 	client := github.NewClient(oauthClient)
 	ghUser, _, err := client.Users.Get("")
 	if err != nil {
-		return wrapErrorf(err, "client.Users.Get() failed")
+		return fmt.Errorf("client.Users.Get() failed with '%s'\n", err)
 	}
 	log.Printf("Logged in as GitHub user: %s\n", *ghUser.Login)
 	// Save user to DB.
 	user, err := GetCreateUser(*ghUser.Login)
 	if err != nil {
-		return wrapErrorf(err, "error saving user to the database")
+		return fmt.Errorf("Error saving user to the database: %s", err)
 	}
 	a.Session.Values[UIDSessionKey] = user.UID
 	if err := a.Session.Save(r, w); err != nil {
-		return wrapErrorf(err, "error saving session")
+		log.Println(err)
 	}
 	return HTTPRedirect{To: "/", Code: http.StatusSeeOther}
 }
@@ -109,18 +108,18 @@ type saveEmailForm struct {
 func serveSaveEmail(c web.C, w http.ResponseWriter, r *http.Request) error {
 	a := NewApp(c)
 	if err := a.Authed(); err != nil {
-		return wrapError(err)
+		return fmt.Errorf("User is not authed")
 	}
 	if err := r.ParseForm(); err != nil {
-		return wrapErrorf(err, "error parsing form")
+		return fmt.Errorf("Error parsing form: %s", err)
 	}
 	var form saveEmailForm
 	err := schema.NewDecoder().Decode(&form, r.PostForm)
 	if err != nil {
-		return wrapErrorf(err, "error decoding form")
+		return fmt.Errorf("Error decoding form: %s", err)
 	}
 	if err := SetEmail(*a.User, form.Email); err != nil {
-		return wrapErrorf(err, "error setting email")
+		return fmt.Errorf("Error setting email: %s", err)
 	}
 	return HTTPRedirect{To: "/", Code: http.StatusSeeOther}
 }

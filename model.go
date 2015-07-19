@@ -2,12 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-errors/errors"
 	"github.com/google/go-github/github"
 	"github.com/samertm/githubstreaks/db"
 )
@@ -51,20 +51,16 @@ func GetCreateUser(login string) (User, error) {
 	}
 	// Create the user and then get them.
 	if err := CreateUser(login); err != nil {
-		return User{}, wrapError(err)
+		return User{}, err
 	}
 	// Get the user one last time.
-	u, err = GetUser(UserSpec{Login: login})
-	if err != nil {
-		return User{}, wrapError(err)
-	}
-	return u, nil
+	return GetUser(UserSpec{Login: login})
 }
 
 func CreateUser(login string) error {
 	query := `INSERT INTO "user"(login) VALUES ($1)`
 	if _, err := db.DB.Exec(query, login); err != nil {
-		return wrapError(err)
+		return err
 	}
 	return nil
 }
@@ -87,7 +83,7 @@ func GetUser(us UserSpec) (User, error) {
 
 	err := db.DB.Get(&u, fmt.Sprintf(`SELECT * from "user" WHERE %s=$1`, where.col), where.val)
 	if err != nil {
-		return User{}, wrapError(err)
+		return User{}, err
 	}
 	return u, nil
 }
@@ -98,7 +94,7 @@ func GetUserCommits(u User, after time.Time) ([]Commit, error) {
 WHERE uid = ` + b.Bind(u.UID) + ` AND author_date > ` + b.Bind(after)
 	var commits []Commit
 	if err := db.DB.Select(&commits, query, b.Items...); err != nil {
-		return nil, wrapError(err)
+		return nil, err
 	}
 	return commits, nil
 }
@@ -108,7 +104,7 @@ func SetEmail(u User, email string) error {
 	query := `UPDATE "user" SET email = ` + b.Bind(email) + " " +
 		"WHERE uid = " + b.Bind(u.UID)
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
-		return wrapError(err)
+		return err
 	}
 	return nil
 }
@@ -116,7 +112,7 @@ func SetEmail(u User, email string) error {
 func SetAccessToken(u User, token string, expiresIn string) error {
 	e, err := strconv.Atoi(expiresIn)
 	if err != nil {
-		return wrapError(err)
+		return err
 	}
 	expiresOn := time.Now().Add(time.Duration(e) * time.Second)
 	b := &db.Binder{}
@@ -124,7 +120,7 @@ func SetAccessToken(u User, token string, expiresIn string) error {
 		"expires_on = " + b.Bind(expiresOn) + " " +
 		"WHERE uid = " + b.Bind(u.UID)
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
-		return wrapError(err)
+		return err
 	}
 	return nil
 }
@@ -134,7 +130,7 @@ func SetCommitsLastUpdatedOn(u User, t time.Time) error {
 	query := `UPDATE "user" SET commits_last_updated_on = ` + b.Bind(t) + ` ` +
 		`WHERE uid = ` + b.Bind(u.UID)
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
-		return wrapError(err)
+		return err
 	}
 	return nil
 }
@@ -153,7 +149,7 @@ func UpdateTime(u User) (time.Time, error) {
 	}
 	gs, err := GetGroups(u)
 	if err != nil {
-		return time.Time{}, wrapError(err)
+		return time.Time{}, err
 	}
 	if len(gs) == 0 {
 		// Return the beginning of today.
@@ -217,7 +213,7 @@ WITH g AS (
 SELECT gid FROM g`
 	var g Group
 	if err := db.DB.Get(&g, query, b.Items...); err != nil {
-		return Group{}, wrapErrorf(err, "error creating group for %s", u.Login)
+		return Group{}, fmt.Errorf("Error creating group for %s: %s", u.Login, err)
 	}
 	return g, nil
 }
@@ -232,14 +228,12 @@ func GetGroup(gid int) (Group, error) {
 	query := `SELECT * FROM "group" WHERE gid = ` + b.Bind(gid)
 	var g Group
 	if err := db.DB.Get(&g, query, b.Items...); err != nil {
-		return Group{}, wrapError(err)
+		return Group{}, err
 	}
 	return g, nil
 }
 
 func GetGroups(u User) ([]Group, error) {
-	// TESTING
-	return nil, wrapErrorf(fmt.Errorf("WHOOPS, made a mistake"), "my bad %d", "dog")
 	b := &db.Binder{}
 	query := `
 SELECT * FROM "group"
@@ -248,7 +242,7 @@ SELECT * FROM "group"
 ORDER BY gid ASC`
 	var gs []Group
 	if err := db.DB.Select(&gs, query, b.Items...); err != nil {
-		return nil, wrapErrorf(err, "Error retrieving groups for %s (%d): %s", u.Login, u.UID)
+		return nil, fmt.Errorf("Error retrieving groups for %s (%d): %s", u.Login, u.UID, err)
 	}
 	return gs, nil
 }
@@ -259,13 +253,13 @@ func GetGroupUsers(g Group) ([]User, error) {
 	query := `SELECT uid FROM user_group WHERE gid = ` + b.Bind(g.GID)
 	var uids []int
 	if err := db.DB.Select(&uids, query, b.Items...); err != nil {
-		return nil, wrapError(err)
+		return nil, err
 	}
 	us := make([]User, 0, len(uids))
 	for _, uid := range uids {
 		u, err := GetUser(UserSpec{UID: uid})
 		if err != nil {
-			return nil, wrapError(err)
+			return nil, err
 		}
 		us = append(us, u)
 	}
@@ -275,14 +269,14 @@ func GetGroupUsers(g Group) ([]User, error) {
 func GetGroupAllCommits(g Group) ([]Commit, error) {
 	us, err := GetGroupUsers(g)
 	if err != nil {
-		return nil, wrapError(err)
+		return nil, err
 	}
 	var cs []Commit
 	for _, u := range us {
 		// SAMER: Clean up 'beginningOfDay' stuff.
 		c, err := GetUserCommits(u, beginningOfDay(g.CreatedOn))
 		if err != nil {
-			return nil, wrapError(err)
+			return nil, err
 		}
 		cs = append(cs, c...)
 	}
@@ -294,11 +288,11 @@ func GetGroupAllCommits(g Group) ([]Commit, error) {
 func UpdateGroupCommits(g Group) error {
 	us, err := GetGroupUsers(g)
 	if err != nil {
-		return wrapError(err)
+		return err
 	}
 	for _, u := range us {
 		if err := UpdateUserCommits(u); err != nil {
-			return wrapError(err)
+			return err
 		}
 	}
 	return nil
@@ -338,7 +332,7 @@ func FetchRecentCommits(u User, until time.Time) ([]GitHubCommitRepo, error) {
 	client := UnauthedGitHubClient()
 	es, _, err := client.Activity.ListEventsPerformedByUser(u.Login, true, nil)
 	if err != nil {
-		return nil, wrapError(err)
+		return nil, err // SAMER: Use go-errors wrapper.
 	}
 	var cs []GitHubCommitRepo
 	for _, e := range es {
@@ -350,7 +344,7 @@ func FetchRecentCommits(u User, until time.Time) ([]GitHubCommitRepo, error) {
 		for _, pec := range PushEventCommits {
 			c, _, err := client.Git.GetCommit(repoUser, repoName, *pec.SHA)
 			if err != nil {
-				return nil, wrapError(err)
+				return nil, err
 			}
 			cs = append(cs, GitHubCommitRepo{
 				Commit:   *c,
@@ -372,19 +366,19 @@ func SplitRepoName(fullRepoName string) (userName, repoName string) {
 func UpdateUserCommits(u User) error {
 	t, err := UpdateTime(u)
 	if err != nil {
-		return wrapError(err)
+		return err
 	}
 	cs, err := FetchRecentCommits(u, t)
 	if err != nil {
-		return wrapError(err)
+		return err
 	}
 	for _, c := range cs {
 		if err := CreateCommit(u, c); err != nil {
-			return wrapError(err)
+			return err
 		}
 	}
 	if err := SetCommitsLastUpdatedOn(u, time.Now()); err != nil {
-		return wrapError(err)
+		return err
 	}
 	return nil
 }
@@ -404,7 +398,7 @@ INSERT INTO commit(sha, uid, author_date, repo_name, message)
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			return nil
 		}
-		return wrapError(err)
+		return err
 	}
 	return nil
 }
