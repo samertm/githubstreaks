@@ -227,7 +227,7 @@ func CreateGroup(u User) (Group, error) {
 	b := &db.Binder{}
 	query := `
 WITH g AS (
-  INSERT INTO "group"(gid, created_on, key) VALUES (DEFAULT, current_timestamp) RETURNING *
+  INSERT INTO "group"(gid, created_on) VALUES (DEFAULT, current_timestamp) RETURNING *
 ), i AS (
   INSERT INTO user_group(uid, gid)
     SELECT ` + b.Bind(u.UID) + `, gid FROM g

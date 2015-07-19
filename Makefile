@@ -1,4 +1,4 @@
-.PHONY: serve watch-serve db-reset test docker-deps docker-build docker-run docker deploy-deps deploy check-to
+.PHONY: serve watch-serve db-reset test docker-deps docker-build docker-run docker deploy-deps deploy
 
 serve:
 	go install github.com/samertm/githubstreaks
@@ -27,21 +27,17 @@ docker-build:
 docker-run:
 	docker start ghs-db # Did you run 'make docker-deps'?
 	-docker top ghs-app && docker rm -f ghs-app
-	docker run -d -p 8222:8000 --name ghs-app --link ghs-db:ghs-db ghs # Did you run 'make docker-build?'
+	docker run -d -p 8222:8000 --name ghs-app --link ghs-db:postgres ghs # Did you run 'make docker-build?'
 
 docker: docker-build docker-run
 
 # Must specify TO.
-deploy-deps: check-to
+deploy-deps:
 	rsync -azP . $(TO):~/githubstreaks
 	ssh $(TO) 'cd ~/githubstreaks && make docker-deps'
 
 # Must specify TO.
-deploy: check-to
+deploy:
 	rsync -azP . $(TO):~/githubstreaks
 	ssh $(TO) 'cd ~/githubstreaks && make docker'
 
-check-to:
-	ifndef TO
-	    $(error TO is undefined)
-	endif
