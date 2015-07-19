@@ -353,7 +353,10 @@ var sqlNotFound = "no rows in result set"
 
 func CommitExists(sha string) bool {
 	_, err := GetCommit(sha)
-	return strings.Contains(err.Error(), sqlNotFound)
+	if err != nil {
+		return strings.Contains(err.Error(), sqlNotFound)
+	}
+	return true
 }
 
 // SAMER: Use functions or methods.
@@ -418,10 +421,13 @@ type GitHubCommitRepo struct {
 
 func FetchRecentCommits(u User, until time.Time) ([]GitHubCommitRepo, error) {
 	t := NewETagTransport(u.ETag.String)
+	var functionFinishedSuccessfully bool // Set this before returning success.
 	go func() {
 		etag := t.GetNewETag()
-		if err := SetETag(u, etag); err != nil {
-			log.Println(err)
+		if functionFinishedSuccessfully {
+			if err := SetETag(u, etag); err != nil {
+				log.Println(err)
+			}
 		}
 	}()
 	client := UnauthedGitHubClient(t)
@@ -454,9 +460,7 @@ func FetchRecentCommits(u User, until time.Time) ([]GitHubCommitRepo, error) {
 			})
 		}
 	}
-	if len(cs) == 0 {
-		return nil, nil
-	}
+	functionFinishedSuccessfully = true
 	return cs, nil
 }
 
