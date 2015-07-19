@@ -16,8 +16,15 @@ type Binder struct {
 }
 
 // Returns "$b.Len".
-func (b *Binder) Bind(i interface{}) string {
-	b.Items = append(b.Items, i)
-	b.Len++
-	return fmt.Sprintf("$%d", b.Len)
+func (b *Binder) Bind(vs ...interface{}) string {
+	var str string
+	for i, v := range vs {
+		b.Items = append(b.Items, v)
+		b.Len++
+		str += fmt.Sprintf("$%d", b.Len)
+		if i < len(vs)-1 {
+			str += ", "
+		}
+	}
+	return str
 }

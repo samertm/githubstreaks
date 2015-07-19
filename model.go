@@ -19,9 +19,10 @@ type User struct {
 	UID   int    `db:"uid"`
 	Login string `db:"login"`
 	// SAMER: Make this unique.
-	Email                sql.NullString `db:"email"`
-	AccessToken          sql.NullString `db:"access_token"`
-	ExpiresOn            *time.Time     `db:"expires_on"`
+	Email       sql.NullString `db:"email"`
+	AccessToken sql.NullString `db:"access_token"`
+	ExpiresOn   *time.Time     `db:"expires_on"`
+	// SAMER: Commits last updated on is never used?
 	CommitsLastUpdatedOn *time.Time     `db:"commits_last_updated_on"`
 	ETag                 sql.NullString `db:"etag"`
 }
@@ -323,20 +324,48 @@ type Commit struct {
 	AuthorDate time.Time `db:"author_date"`
 	RepoName   string    `db:"repo_name"`
 	Message    string    `db:"message"`
+	Additions  int       `db:"additions"`
+	Deletions  int       `db:"deletions"`
+	//Files []CommitFile
+}
+
+type CommitFile struct {
+	CommitSHA string `db:"commit_sha"`
+	Filename  string `db:"filename"`
+	// Status is one of "modified", "removed", "added".
+	Status    string `db:"status"`
+	Additions int    `db:"additions"`
+	Deletions int    `db:"deletions"`
+	Patch     string `db:"patch"`
 }
 
 // SAMER: repo_name -> full_repo_name?
-var commitSchema = `
+var (
+	commitSchema = `
 CREATE TABLE IF NOT EXISTS "commit" (
   sha text PRIMARY KEY,
   uid integer REFERENCES "user" (uid) NOT NULL,
   author_date timestamp NOT NULL,
   repo_name text NOT NULL,
-  message text NOT NULL
+  message text NOT NULL,
+  additions integer NOT NULL,
+  deletions integer NOT NULL
 )`
+
+	commitFileSchema = `
+CREATE TABLE IF NOT EXISTS "commit_file" (
+  commit_sha text REFERENCES "commit" (sha),
+  filename text NOT NULL,
+  status text NOT NULL,
+  additions integer NOT NULL,
+  deletions integer NOT NULL,
+  patch text NOT NULL
+)`
+)
 
 func init() {
 	db.DB.MustExec(commitSchema)
+	db.DB.MustExec(commitFileSchema)
 }
 
 func GetCommit(sha string) (Commit, error) {
@@ -417,22 +446,12 @@ func CommitGroups(commits []Commit) []CommitGroup {
 }
 
 type GitHubCommitRepo struct {
-	github.Commit
+	github.RepositoryCommit
 	RepoName string
 }
 
-func FetchRecentCommits(u User, until time.Time) ([]GitHubCommitRepo, error) {
-	t := NewETagTransport(u.ETag.String)
-	var functionFinishedSuccessfully bool // Set this before returning success.
-	defer func() {
-		etag := t.GetNewETag()
-		if functionFinishedSuccessfully {
-			if err := SetETag(u, etag); err != nil {
-				log.Println(err)
-			}
-		}
-	}()
-	client := UnauthedGitHubClient(t)
+func FetchRecentCommits(u User, transport http.RoundTripper) ([]GitHubCommitRepo, error) {
+	client := UnauthedGitHubClient(transport)
 	es, resp, err := client.Activity.ListEventsPerformedByUser(u.Login, true, nil)
 	// If the response was not modified, then there are no new
 	// events (es is nil).
@@ -456,17 +475,16 @@ func FetchRecentCommits(u User, until time.Time) ([]GitHubCommitRepo, error) {
 			if exists {
 				continue
 			}
-			c, _, err := client.Git.GetCommit(repoUser, repoName, *pec.SHA)
+			c, _, err := client.Repositories.GetCommit(repoUser, repoName, *pec.SHA)
 			if err != nil {
 				return nil, wrapError(err)
 			}
 			cs = append(cs, GitHubCommitRepo{
-				Commit:   *c,
-				RepoName: *e.Repo.Name,
+				RepositoryCommit: *c,
+				RepoName:         *e.Repo.Name,
 			})
 		}
 	}
-	functionFinishedSuccessfully = true
 	return cs, nil
 }
 
@@ -476,10 +494,21 @@ func SplitRepoName(fullRepoName string) (userName, repoName string) {
 }
 
 func UpdateUserCommits(u User) error {
-	t, err := UpdateTime(u)
-	if err != nil {
-		return wrapError(err)
-	}
+	// SAMER: Do I need this?
+	// t, err := UpdateTime(u)
+	// if err != nil {
+	// 	return wrapError(err)
+	// }
+	t := NewETagTransport(u.ETag.String)
+	var functionFinishedSuccessfully bool // Set this before returning success.
+	defer func() {
+		etag := t.GetNewETag()
+		if functionFinishedSuccessfully {
+			if err := SetETag(u, etag); err != nil {
+				log.Println(err)
+			}
+		}
+	}()
 	cs, err := FetchRecentCommits(u, t)
 	if err != nil {
 		return wrapError(err)
@@ -492,25 +521,46 @@ func UpdateUserCommits(u User) error {
 	if err := SetCommitsLastUpdatedOn(u, time.Now()); err != nil {
 		return wrapError(err)
 	}
+	functionFinishedSuccessfully = true
 	return nil
 }
 
-// SAMER: Submit a PR to go-github for Commit.GitHubAuthor.
 func CreateCommit(u User, c GitHubCommitRepo) error {
+	if u.Login != *c.Author.Login {
+		// Ignore the commit if the author does not match u.
+		return nil
+	}
 	if c.Message == nil {
 		c.Message = github.String("")
 	}
 	b := &db.Binder{}
 	query := `
-INSERT INTO commit(sha, uid, author_date, repo_name, message)
-  VALUES (` + b.Bind(*c.SHA) + `, ` + b.Bind(u.UID) + `, ` + b.Bind(*c.Author.Date) + `, ` +
-		b.Bind(c.RepoName) + `, ` + b.Bind(*c.Message) + `)`
+INSERT INTO commit(sha, uid, author_date, repo_name, message, additions, deletions)
+  VALUES (` +
+		b.Bind(*c.SHA, u.UID, *c.Commit.Author.Date,
+			c.RepoName, *c.Commit.Message, *c.Stats.Additions, *c.Stats.Deletions) +
+		`)`
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
 		// Ignore if we've seen this commit.
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			return nil
 		}
 		return wrapError(err)
+	}
+	for _, f := range c.Files {
+		b := &db.Binder{}
+		// For empty files, Patch is nil.
+		if f.Patch == nil {
+			f.Patch = github.String("")
+		}
+		query := `
+INSERT INTO commit_file(commit_sha, filename, status, additions, deletions, patch)
+  VALUES (` +
+			b.Bind(*c.SHA, *f.Filename, *f.Status, *f.Additions, *f.Deletions, *f.Patch) +
+			`)`
+		if _, err := db.DB.Exec(query, b.Items...); err != nil {
+			return wrapError(err)
+		}
 	}
 	return nil
 }

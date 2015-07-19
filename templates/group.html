@@ -9,7 +9,7 @@
       {% for cg in v.CommitGroups %}
         <p>Commits for {{ cg.RepoName }}</p>
         {% for c in cg.Commits %}
-          <p>Commit: {{ ShortSHA(c.SHA) }} {{ CommitMessageTitle(c.Message) }}</p>  
+          <p>Commit: {{ ShortSHA(c.SHA) }} {{ CommitMessageTitle(c.Message) }} Changes: + {{ c.Additions }} / - {{ c.Deletions }}</p>  
         {% endfor %}
       {% endfor %}
     </div>
