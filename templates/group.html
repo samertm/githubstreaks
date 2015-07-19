@@ -4,7 +4,8 @@
 <div class="container">
   <div class="row">
     <div class="col-md-12">
-      <p>Welcome to this group, {{ v.Login }}. Your group id is: {{ v.GroupID }}.</p>
+      <p>Welcome to this group, {{ v.Login }}. Your group id is: {{ v.Group.GID }}.</p>
+      <p>Share this URL with someone else to get them to join the group (my english skills have atrophied so bad): {{ AbsoluteURL(GroupShareURL(v.Group)) }}
       <button id="refresh" class="btn btn-md btn-success">Refresh (dev)</button>
       {% for cg in v.CommitGroups %}
         <p>Commits for {{ cg.RepoName }}</p>

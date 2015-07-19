@@ -27,7 +27,7 @@ docker-build:
 docker-run:
 	docker start ghs-db # Did you run 'make docker-deps'?
 	-docker top ghs-app && docker rm -f ghs-app
-	docker run -d -p 8111:8000 --name ghs-app --link ghs-db:ghs-db ghs # Did you run 'make docker-build?'
+	docker run -d -p 8222:8000 --name ghs-app --link ghs-db:ghs-db ghs # Did you run 'make docker-build?'
 
 docker: docker-build docker-run
 

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net/http"
@@ -225,7 +227,7 @@ func CreateGroup(u User) (Group, error) {
 	b := &db.Binder{}
 	query := `
 WITH g AS (
-  INSERT INTO "group"(gid, created_on) VALUES (DEFAULT, current_timestamp) RETURNING *
+  INSERT INTO "group"(gid, created_on, key) VALUES (DEFAULT, current_timestamp) RETURNING *
 ), i AS (
   INSERT INTO user_group(uid, gid)
     SELECT ` + b.Bind(u.UID) + `, gid FROM g
@@ -238,9 +240,31 @@ SELECT gid FROM g`
 	return g, nil
 }
 
+func GroupAddUser(g Group, u User) error {
+	b := &db.Binder{}
+	query := `
+INSERT INTO user_group(uid, gid) VALUES (` + b.Bind(u.UID, g.GID) + `)`
+	if _, err := db.DB.Exec(query, b.Items...); err != nil {
+		return wrapErrorf(err, "error adding user %d to group %d", u.UID, g.GID)
+	}
+	return nil
+}
+
 // SAMER: This should be baked into the router. Use gorilla.Mux?
 func GroupURL(g Group) string {
 	return "/group/" + strconv.Itoa(g.GID)
+}
+
+func GroupShareURL(g Group) string {
+	return "/group/" + strconv.Itoa(g.GID) + "/join?key=" + GroupSecretKey(g)
+}
+
+// SAMER: Make secret key even more secret?
+func GroupSecretKey(g Group) string {
+	m := md5.New()
+	m.Write([]byte(strconv.Itoa(g.GID)))
+	m.Write([]byte(strconv.FormatInt(g.CreatedOn.Unix(), 10)))
+	return hex.EncodeToString(m.Sum(nil))
 }
 
 func GetGroup(gid int) (Group, error) {

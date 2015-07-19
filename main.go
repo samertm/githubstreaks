@@ -28,7 +28,9 @@ type errorTemplateVars struct {
 }
 
 var baseContext = pongo2.Context{
+	"AbsoluteURL":        AbsoluteURL,
 	"GroupURL":           GroupURL,
+	"GroupShareURL":      GroupShareURL,
 	"ShortSHA":           ShortSHA,
 	"CommitMessageTitle": CommitMessageTitle,
 }
@@ -143,7 +145,7 @@ var groupTemplate = pongo2.Must(pongo2.FromFile("templates/group.html"))
 
 type groupTemplateVars struct {
 	Login        string // SAMER: Add CommonTemplateVars.
-	GroupID      int
+	Group        Group
 	CommitGroups []CommitGroup
 }
 
@@ -167,7 +169,7 @@ func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 	// SAMER: Check that the user is in the group.
 	return RenderTemplate(groupTemplate, w, groupTemplateVars{
 		Login:        a.User.Login,
-		GroupID:      gid,
+		Group:        g,
 		CommitGroups: CommitGroups(cs),
 	})
 }
@@ -186,6 +188,38 @@ func serveGroupRefresh(c web.C, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return nil
+}
+
+type groupJoinQuery struct {
+	Key string `schema:"key"`
+}
+
+func serveGroupJoin(c web.C, w http.ResponseWriter, r *http.Request) error {
+	a := NewApp(c)
+	// SAMER: Set up some sort of auth flow.
+	if err := a.Authed(); err != nil {
+		return wrapError(err)
+	}
+	gid, err := getParamInt(c, "group_id")
+	if err != nil {
+		return err
+	}
+	g, err := GetGroup(gid)
+	if err != nil {
+		return err
+	}
+	var q groupJoinQuery
+	if err := schema.NewDecoder().Decode(&q, r.URL.Query()); err != nil {
+		return wrapError(err)
+	}
+	if q.Key != GroupSecretKey(g) {
+		return errors.Errorf("key %q does not match secret key for group %d", q.Key, g.GID)
+	}
+	// Key matches, add user to g and redirect to the group page.
+	if err := GroupAddUser(g, *a.User); err != nil {
+		return wrapError(err)
+	}
+	return HTTPRedirect{To: GroupURL(g), Code: http.StatusSeeOther}
 }
 
 var (
@@ -229,6 +263,7 @@ func main() {
 
 	goji.Post("/group/create", handler(serveGroupCreate))
 	goji.Post("/group/:group_id/refresh", handler(serveGroupRefresh))
+	goji.Get("/group/:group_id/join", handler(serveGroupJoin))
 	goji.Get("/group/:group_id", handler(serveGroup))
 
 	goji.Serve()

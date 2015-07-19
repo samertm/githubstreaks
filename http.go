@@ -27,7 +27,7 @@ func getParamInt(c web.C, param string) (int, error) {
 	return i, nil
 }
 
-func absoluteURL(urlFragment string) string {
+func AbsoluteURL(urlFragment string) string {
 	return conf.Config.BaseURL + "/" + strings.TrimPrefix(urlFragment, "/")
 }
 
