@@ -135,3 +135,53 @@ func logError(c web.C, req *http.Request, err error, rv interface{}) {
 		log.Print(buf.String())
 	}
 }
+
+type etagTransport struct {
+	currentETag string
+	newETag     chan string
+}
+
+// You must call t.GetNewETag in a goroutine after creating t or you
+// will leak memory.
+func NewETagTransport(etag string) (t *etagTransport) {
+	return &etagTransport{
+		currentETag: etag,
+		newETag:     make(chan string),
+	}
+}
+
+func (t *etagTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if t.currentETag != "" {
+		// To set extra querystring params, we must make a copy of the Request so
+		// that we don't modify the Request we were given. This is required by the
+		// specification of http.RoundTripper.
+		req = cloneRequest(req)
+		req.Header.Add("If-None-Match", t.currentETag)
+	}
+
+	// Make the HTTP request.
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	go func(r *http.Response) {
+		t.newETag <- r.Header.Get("ETag")
+	}(resp)
+	return resp, err
+}
+
+// GetNewETag blocks until the request is recieved.
+func (t *etagTransport) GetNewETag() string {
+	return <-t.newETag
+}
+
+// cloneRequest returns a clone of the provided *http.Request. The clone is a
+// shallow copy of the struct and its Header map.
+func cloneRequest(r *http.Request) *http.Request {
+	// shallow copy of the struct
+	r2 := new(http.Request)
+	*r2 = *r
+	// deep copy of the Header
+	r2.Header = make(http.Header)
+	for k, s := range r.Header {
+		r2.Header[k] = s
+	}
+	return r2
+}

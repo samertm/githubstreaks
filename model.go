@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"net/http"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +22,7 @@ type User struct {
 	AccessToken          sql.NullString `db:"access_token"`
 	ExpiresOn            *time.Time     `db:"expires_on"`
 	CommitsLastUpdatedOn *time.Time     `db:"commits_last_updated_on"`
+	ETag                 sql.NullString `db:"etag"`
 }
 
 var userSchema = `
@@ -29,7 +32,8 @@ CREATE TABLE IF NOT EXISTS "user" (
   email text,
   access_token text,
   expires_on timestamp,
-  commits_last_updated_on timestamp
+  commits_last_updated_on timestamp,
+  etag text
 )
 `
 
@@ -170,6 +174,16 @@ func UpdateTime(u User) (time.Time, error) {
 
 func beginningOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+}
+
+func SetETag(u User, etag string) error {
+	b := db.Binder{}
+	query := `UPDATE "user" SET etag = ` + b.Bind(etag) + ` ` +
+		`WHERE uid = ` + b.Bind(u.UID)
+	if _, err := db.DB.Exec(query, b.Items...); err != nil {
+		return wrapError(err)
+	}
+	return nil
 }
 
 // SAMER: Pick another name.
@@ -330,12 +344,18 @@ type GitHubCommitRepo struct {
 }
 
 func FetchRecentCommits(u User, until time.Time) ([]GitHubCommitRepo, error) {
-	// Figure out ETag stuff.
-	// https://developer.github.com/v3/activity/events/
-	// SAMER: Should I keep recreating UnauthedGitHubClient?
-	client := UnauthedGitHubClient()
-	es, _, err := client.Activity.ListEventsPerformedByUser(u.Login, true, nil)
-	if err != nil {
+	t := NewETagTransport(u.ETag.String)
+	go func() {
+		etag := t.GetNewETag()
+		if err := SetETag(u, etag); err != nil {
+			log.Println(err)
+		}
+	}()
+	client := UnauthedGitHubClient(t)
+	es, resp, err := client.Activity.ListEventsPerformedByUser(u.Login, true, nil)
+	// If the response was not modified, then there are no new
+	// events (es is nil).
+	if resp.StatusCode != http.StatusNotModified && err != nil {
 		return nil, wrapError(err)
 	}
 	var cs []GitHubCommitRepo

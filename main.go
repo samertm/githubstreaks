@@ -196,10 +196,12 @@ var (
 	oauthStateString = conf.Config.OAuthStateString
 )
 
-func UnauthedGitHubClient() *github.Client {
+// Pass nil for transport.
+func UnauthedGitHubClient(transport http.RoundTripper) *github.Client {
 	t := github.UnauthenticatedRateLimitedTransport{
 		ClientID:     oauthConf.ClientID,
 		ClientSecret: oauthConf.ClientSecret,
+		Transport:    transport,
 	}
 	return github.NewClient(t.Client())
 }
