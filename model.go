@@ -97,7 +97,7 @@ func GetUser(us UserSpec) (User, error) {
 }
 
 func GetUserCommits(u User, after time.Time) ([]Commit, error) {
-	b := db.Binder{}
+	b := &db.Binder{}
 	query := `SELECT * FROM commit
 WHERE uid = ` + b.Bind(u.UID) + ` AND author_date > ` + b.Bind(after)
 	var commits []Commit
@@ -134,7 +134,7 @@ func SetAccessToken(u User, token string, expiresIn string) error {
 }
 
 func SetCommitsLastUpdatedOn(u User, t time.Time) error {
-	b := db.Binder{}
+	b := &db.Binder{}
 	query := `UPDATE "user" SET commits_last_updated_on = ` + b.Bind(t) + ` ` +
 		`WHERE uid = ` + b.Bind(u.UID)
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
@@ -177,7 +177,7 @@ func beginningOfDay(t time.Time) time.Time {
 }
 
 func SetETag(u User, etag string) error {
-	b := db.Binder{}
+	b := &db.Binder{}
 	query := `UPDATE "user" SET etag = ` + b.Bind(etag) + ` ` +
 		`WHERE uid = ` + b.Bind(u.UID)
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
@@ -267,7 +267,7 @@ ORDER BY gid ASC`
 
 func GetGroupUsers(g Group) ([]User, error) {
 	// Too lazy to figure out how joining works.
-	b := db.Binder{}
+	b := &db.Binder{}
 	query := `SELECT uid FROM user_group WHERE gid = ` + b.Bind(g.GID)
 	var uids []int
 	if err := db.DB.Select(&uids, query, b.Items...); err != nil {
@@ -338,6 +338,23 @@ func init() {
 	db.DB.MustExec(commitSchema)
 }
 
+func GetCommit(sha string) (Commit, error) {
+	b := &db.Binder{}
+	query := `SELECT * FROM commit WHERE sha = ` + b.Bind(sha)
+	var c Commit
+	if err := db.DB.Get(&c, query, b.Items...); err != nil {
+		return Commit{}, err
+	}
+	return c, nil
+}
+
+var sqlNotFound = "no rows in result set"
+
+func CommitExists(sha string) bool {
+	_, err := GetCommit(sha)
+	return strings.Contains(err.Error(), sqlNotFound)
+}
+
 type GitHubCommitRepo struct {
 	github.Commit
 	RepoName string
@@ -366,6 +383,11 @@ func FetchRecentCommits(u User, until time.Time) ([]GitHubCommitRepo, error) {
 		repoUser, repoName := SplitRepoName(*e.Repo.Name)
 		PushEventCommits := e.Payload().(*github.PushEvent).Commits
 		for _, pec := range PushEventCommits {
+			// Don't fetch the commit if we already have a
+			// copy of it in the database.
+			if CommitExists(*pec.SHA) {
+				continue
+			}
 			c, _, err := client.Git.GetCommit(repoUser, repoName, *pec.SHA)
 			if err != nil {
 				return nil, wrapError(err)
@@ -412,7 +434,7 @@ func CreateCommit(u User, c GitHubCommitRepo) error {
 	if c.Message == nil {
 		c.Message = github.String("")
 	}
-	b := db.Binder{}
+	b := &db.Binder{}
 	query := `
 INSERT INTO commit(sha, uid, author_date, repo_name, message)
   VALUES (` + b.Bind(*c.SHA) + `, ` + b.Bind(u.UID) + `, ` + b.Bind(*c.Author.Date) + `, ` +
@@ -429,7 +451,7 @@ INSERT INTO commit(sha, uid, author_date, repo_name, message)
 
 // // SAMER: Handle duplicates?
 // func CreateEvent(u User, e github.Event) error {
-// 	b := db.Binder{}
+// 	b := &db.Binder{}
 // 	query := `
 // INSERT INTO "event"(egithub_id, uid)
 //   VALUES (` + b.Bind(e.ID) + `, ` + b.Bind(u.UID) + `)`

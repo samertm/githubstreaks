@@ -32,7 +32,7 @@ func TestUserUpdateCommits(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := UserUpdateCommits(u); err != nil {
+	if err := UpdateUserCommits(u); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -65,4 +65,9 @@ func TestGetGroupAllCommits(t *testing.T) {
 	for _, c := range cs {
 		t.Log(c.SHA)
 	}
+}
+
+func TestGetCommitFailure(t *testing.T) {
+	t.SkipNow()
+	t.Log(GetCommit("JLFKDJSKLJFLDSK"))
 }
