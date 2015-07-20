@@ -14,9 +14,9 @@
       <p>Share this URL with someone else to get them to join the group (my english skills have atrophied so bad): {{ AbsoluteURL(GroupShareURL(v.Group)) }}</p>
       <p>Make a commit on GitHub to see it below!</p>
       <p><button id="refresh" class="btn btn-md btn-success">Refresh GitHub Commits (dev)</button></p>
-      {% for cg in v.CommitGroups %}
-        <p>Commits for {{ cg.RepoName }}</p>
-        {% for c in cg.Commits %}
+      {% for dcg in v.DayCommitGroups %}
+        <p>Commits on {{ dcg.Day }}</p>
+        {% for c in dcg.Commits %}
           <p>Commit: {{ ShortSHA(c.SHA) }} {{ CommitMessageTitle(c.Message) }} Changes: + {{ c.Additions }} / - {{ c.Deletions }}</p>  
         {% endfor %}
       {% endfor %}

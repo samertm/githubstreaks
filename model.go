@@ -165,7 +165,7 @@ func UpdateTime(u User) (time.Time, error) {
 	}
 	if len(gs) == 0 {
 		// Return the beginning of today.
-		return beginningOfDay(time.Now()), nil
+		return BeginningOfDay(time.Now()), nil
 	}
 	oldestGroup := gs[0].CreatedOn
 	for _, g := range gs {
@@ -173,10 +173,10 @@ func UpdateTime(u User) (time.Time, error) {
 			oldestGroup = g.CreatedOn
 		}
 	}
-	return beginningOfDay(beginningOfDay(oldestGroup)), nil
+	return BeginningOfDay(oldestGroup), nil
 }
 
-func beginningOfDay(t time.Time) time.Time {
+func BeginningOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
@@ -317,8 +317,8 @@ func GetGroupAllCommits(g Group) ([]Commit, error) {
 	}
 	var cs []Commit
 	for _, u := range us {
-		// SAMER: Clean up 'beginningOfDay' stuff.
-		c, err := GetUserCommits(u, beginningOfDay(g.CreatedOn))
+		// SAMER: Clean up 'BeginningOfDay' stuff.
+		c, err := GetUserCommits(u, BeginningOfDay(g.CreatedOn))
 		if err != nil {
 			return nil, wrapError(err)
 		}
@@ -469,6 +469,43 @@ func CommitGroups(commits []Commit) []CommitGroup {
 	return cgs
 }
 
+type DayCommitGroup struct {
+	Day     time.Time
+	Commits []Commit
+}
+
+// DayCommitGroups groups commits by day, sorted by the most recent
+// day. We do this by sorting all of the commits by time, descending,
+// and then adding them to the current DayCommitGroup until the day
+// changes.
+func DayCommitGroups(commits []Commit) []DayCommitGroup {
+	if len(commits) == 0 {
+		return nil
+	}
+	// First, sort the commits by time, descending.
+	sort.Sort(SortableCommits(commits))
+	var dcgs []DayCommitGroup
+	currentDCG := DayCommitGroup{
+		Day:     BeginningOfDay(commits[0].AuthorDate),
+		Commits: []Commit{commits[0]},
+	}
+	// Start with the second element.
+	for i := 1; i < len(commits); i++ {
+		c := commits[i]
+		b := BeginningOfDay(c.AuthorDate)
+		if currentDCG.Day.After(b) {
+			// Set up new DCG.
+			dcgs = append(dcgs, currentDCG)
+			currentDCG = DayCommitGroup{Day: b, Commits: []Commit{c}}
+			continue
+		}
+		currentDCG.Commits = append(currentDCG.Commits, c)
+	}
+	// Append last DayCommitGroup.
+	dcgs = append(dcgs, currentDCG)
+	return dcgs
+}
+
 type GitHubCommitRepo struct {
 	github.RepositoryCommit
 	RepoName string
@@ -588,19 +625,3 @@ INSERT INTO commit_file(commit_sha, filename, status, additions, deletions, patc
 	}
 	return nil
 }
-
-// // SAMER: Handle duplicates?
-// func CreateEvent(u User, e github.Event) error {
-// 	b := &db.Binder{}
-// 	query := `
-// INSERT INTO "event"(egithub_id, uid)
-//   VALUES (` + b.Bind(e.ID) + `, ` + b.Bind(u.UID) + `)`
-// 	if _, err := db.DB.Exec(query, b.Items); err != nil {
-// 		// Ignore errors on duplicate events.
-// 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-// 			return nil
-// 		}
-// 		return err
-// 	}
-// 	return nil
-// }

@@ -171,9 +171,9 @@ func serveGroupCreate(c web.C, w http.ResponseWriter, r *http.Request) error {
 var groupTemplate = pongo2.Must(pongo2.FromFile("templates/group.html"))
 
 type groupTemplateVars struct {
-	Login        string // SAMER: Add CommonTemplateVars.
-	Group        Group
-	CommitGroups []CommitGroup
+	Login           string // SAMER: Add CommonTemplateVars.
+	Group           Group
+	DayCommitGroups []DayCommitGroup
 }
 
 func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
@@ -195,9 +195,9 @@ func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 	}
 	// SAMER: Check that the user is in the group.
 	return RenderTemplate(groupTemplate, w, groupTemplateVars{
-		Login:        a.User.Login,
-		Group:        g,
-		CommitGroups: CommitGroups(cs),
+		Login:           a.User.Login,
+		Group:           g,
+		DayCommitGroups: DayCommitGroups(cs),
 	})
 }
 

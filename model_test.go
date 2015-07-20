@@ -2,7 +2,9 @@ package main
 
 import (
 	"log"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/samertm/syncfbevents/db"
 )
@@ -70,4 +72,46 @@ func TestGetGroupAllCommits(t *testing.T) {
 func TestGetCommitFailure(t *testing.T) {
 	t.SkipNow()
 	t.Log(GetCommit("JLFKDJSKLJFLDSK"))
+}
+
+func TestDayCommitGroups(t *testing.T) {
+	days := []time.Time{}
+	days = append(days, time.Date(2014, 3, 5, 0, 0, 0, 0, time.UTC))
+	days = append(days, time.Date(2014, 3, 3, 0, 0, 0, 0, time.UTC))
+	days = append(days, time.Date(2014, 2, 15, 0, 0, 0, 0, time.UTC))
+	commits := []Commit{{
+		SHA:        "1",
+		AuthorDate: time.Date(days[0].Year(), days[0].Month(), days[0].Day(), 16, 15, 15, 15, time.UTC),
+	}, {
+		SHA:        "2",
+		AuthorDate: time.Date(days[0].Year(), days[0].Month(), days[0].Day(), 15, 15, 15, 15, time.UTC),
+	}, {
+		SHA:        "0",
+		AuthorDate: time.Date(days[0].Year(), days[0].Month(), days[0].Day(), 17, 15, 15, 15, time.UTC),
+	}, {
+		SHA:        "4",
+		AuthorDate: time.Date(days[1].Year(), days[1].Month(), days[1].Day(), 15, 15, 15, 15, time.UTC),
+	}, {
+		SHA:        "3",
+		AuthorDate: time.Date(days[1].Year(), days[1].Month(), days[1].Day(), 17, 15, 15, 15, time.UTC),
+	}, {
+		SHA:        "5",
+		AuthorDate: time.Date(days[2].Year(), days[2].Month(), days[2].Day(), 15, 15, 15, 15, time.UTC),
+	}}
+	dcgs := DayCommitGroups(commits)
+	if want := 3; len(dcgs) != want {
+		t.Errorf("Got %d dcgs, wanted %d", dcgs, want)
+	}
+	var counter int
+	for _, dcg := range dcgs {
+		for _, c := range dcg.Commits {
+			if want := BeginningOfDay(c.AuthorDate); dcg.Day != want {
+				t.Errorf("Got day %s, wanted %s", dcg.Day, want)
+			}
+			if want := strconv.Itoa(counter); c.SHA != want {
+				t.Errorf("Got SHA %s, wanted %s", c.SHA, want)
+			}
+			counter++
+		}
+	}
 }
