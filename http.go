@@ -10,10 +10,17 @@ import (
 	"strings"
 
 	"github.com/go-errors/errors"
+	"github.com/gorilla/schema"
 	"github.com/gorilla/sessions"
 	"github.com/samertm/githubstreaks/conf"
 	"github.com/zenazn/goji/web"
 )
+
+var SchemaDecoder = schema.NewDecoder()
+
+func init() {
+	SchemaDecoder.IgnoreUnknownKeys(true)
+}
 
 func getParamInt(c web.C, param string) (int, error) {
 	v, ok := c.URLParams[param]
@@ -66,7 +73,7 @@ type HTTPError struct {
 	Code int
 }
 
-func (e HTTPError) Error() string {
+func (e *HTTPError) Error() string {
 	return fmt.Sprintf("Error code: %d, error: %s", e.Code, e.Err)
 }
 
@@ -75,7 +82,7 @@ type HTTPRedirect struct {
 	Code int
 }
 
-func (e HTTPRedirect) Error() string {
+func (e *HTTPRedirect) Error() string {
 	return fmt.Sprintf("Redirect code %d to %s", e.Code, e.To)
 }
 
@@ -97,7 +104,7 @@ func (h handler) ServeHTTPC(c web.C, w http.ResponseWriter, r *http.Request) {
 
 	err = h(c, w, r)
 	if err != nil {
-		if e, ok := err.(HTTPRedirect); ok {
+		if e, ok := err.(*HTTPRedirect); ok {
 			http.Redirect(w, r, e.To, e.Code)
 			return
 		}
@@ -109,7 +116,7 @@ func (h handler) ServeHTTPC(c web.C, w http.ResponseWriter, r *http.Request) {
 func handleError(w http.ResponseWriter, r *http.Request, err error) {
 	var message string
 	var code int
-	if e, ok := err.(HTTPError); ok {
+	if e, ok := err.(*HTTPError); ok {
 		message = e.Err.Error()
 		code = e.Code
 	} else {

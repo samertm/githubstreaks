@@ -5,12 +5,12 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 
 	"github.com/flosch/pongo2"
 	"github.com/go-errors/errors"
 	"github.com/google/go-github/github"
 	"github.com/gorilla/context"
-	"github.com/gorilla/schema"
 	"github.com/samertm/githubstreaks/conf"
 	"github.com/zenazn/goji"
 	"github.com/zenazn/goji/web"
@@ -73,9 +73,21 @@ func serveIndex(c web.C, w http.ResponseWriter, r *http.Request) error {
 	return RenderTemplate(indexTemplate, w, v)
 }
 
+type redirectQuery struct {
+	Redirect string `schema:"redirect"`
+}
+
 func serveLogin(c web.C, w http.ResponseWriter, r *http.Request) error {
-	url := oauthConf.AuthCodeURL(oauthStateString, oauth2.AccessTypeOnline)
-	return HTTPRedirect{To: url, Code: http.StatusSeeOther}
+	var q redirectQuery
+	if err := SchemaDecoder.Decode(&q, r.URL.Query()); err != nil {
+		return wrapError(err)
+	}
+	oauth := oauthConf // Copy oauthConf so we don't modify it.
+	if q.Redirect != "" {
+		oauth.RedirectURL = AbsoluteURL("/github_callback?redirect=" + q.Redirect)
+	}
+	u := oauth.AuthCodeURL(oauthStateString, oauth2.AccessTypeOnline)
+	return &HTTPRedirect{To: u, Code: http.StatusSeeOther}
 }
 
 func serveGitHubCallback(c web.C, w http.ResponseWriter, r *http.Request) error {
@@ -107,7 +119,18 @@ func serveGitHubCallback(c web.C, w http.ResponseWriter, r *http.Request) error 
 	if err := a.Session.Save(r, w); err != nil {
 		return wrapErrorf(err, "error saving session")
 	}
-	return HTTPRedirect{To: "/", Code: http.StatusSeeOther}
+	var q redirectQuery
+	if err := SchemaDecoder.Decode(&q, r.URL.Query()); err != nil {
+		return wrapError(err)
+	}
+	if q.Redirect != "" {
+		u, err := url.QueryUnescape(q.Redirect)
+		if err != nil {
+			return wrapError(err)
+		}
+		return &HTTPRedirect{To: u, Code: http.StatusSeeOther}
+	}
+	return &HTTPRedirect{To: "/", Code: http.StatusSeeOther}
 }
 
 type saveEmailForm struct {
@@ -116,33 +139,33 @@ type saveEmailForm struct {
 
 func serveSaveEmail(c web.C, w http.ResponseWriter, r *http.Request) error {
 	a := NewApp(c)
-	if err := a.Authed(); err != nil {
-		return wrapError(err)
+	if redirect := a.Authed(r); redirect != nil {
+		return redirect
 	}
 	if err := r.ParseForm(); err != nil {
 		return wrapErrorf(err, "error parsing form")
 	}
 	var form saveEmailForm
-	err := schema.NewDecoder().Decode(&form, r.PostForm)
+	err := SchemaDecoder.Decode(&form, r.PostForm)
 	if err != nil {
 		return wrapErrorf(err, "error decoding form")
 	}
 	if err := SetEmail(*a.User, form.Email); err != nil {
 		return wrapErrorf(err, "error setting email")
 	}
-	return HTTPRedirect{To: "/", Code: http.StatusSeeOther}
+	return &HTTPRedirect{To: "/", Code: http.StatusSeeOther}
 }
 
 func serveGroupCreate(c web.C, w http.ResponseWriter, r *http.Request) error {
 	a := NewApp(c)
-	if err := a.Authed(); err != nil {
-		return err
+	if redirect := a.Authed(r); redirect != nil {
+		return redirect
 	}
 	g, err := CreateGroup(*a.User)
 	if err != nil {
-		return err
+		return wrapError(err)
 	}
-	return HTTPRedirect{To: GroupURL(g), Code: http.StatusSeeOther}
+	return &HTTPRedirect{To: GroupURL(g), Code: http.StatusSeeOther}
 }
 
 var groupTemplate = pongo2.Must(pongo2.FromFile("templates/group.html"))
@@ -155,20 +178,20 @@ type groupTemplateVars struct {
 
 func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 	a := NewApp(c)
-	if err := a.Authed(); err != nil {
-		return err
+	if redirect := a.Authed(r); redirect != nil {
+		return redirect
 	}
 	gid, err := getParamInt(c, "group_id")
 	if err != nil {
-		return err
+		return wrapError(err)
 	}
 	g, err := GetGroup(gid)
 	if err != nil {
-		return err
+		return wrapError(err)
 	}
 	cs, err := GetGroupAllCommits(g)
 	if err != nil {
-		return err
+		return wrapError(err)
 	}
 	// SAMER: Check that the user is in the group.
 	return RenderTemplate(groupTemplate, w, groupTemplateVars{
@@ -201,8 +224,8 @@ type groupJoinQuery struct {
 func serveGroupJoin(c web.C, w http.ResponseWriter, r *http.Request) error {
 	a := NewApp(c)
 	// SAMER: Set up some sort of auth flow.
-	if err := a.Authed(); err != nil {
-		return wrapError(err)
+	if redirect := a.Authed(r); redirect != nil {
+		return redirect
 	}
 	gid, err := getParamInt(c, "group_id")
 	if err != nil {
@@ -213,7 +236,7 @@ func serveGroupJoin(c web.C, w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var q groupJoinQuery
-	if err := schema.NewDecoder().Decode(&q, r.URL.Query()); err != nil {
+	if err := SchemaDecoder.Decode(&q, r.URL.Query()); err != nil {
 		return wrapError(err)
 	}
 	if q.Key != GroupSecretKey(g) {
@@ -223,11 +246,11 @@ func serveGroupJoin(c web.C, w http.ResponseWriter, r *http.Request) error {
 	if err := GroupAddUser(g, *a.User); err != nil {
 		return wrapError(err)
 	}
-	return HTTPRedirect{To: GroupURL(g), Code: http.StatusSeeOther}
+	return &HTTPRedirect{To: GroupURL(g), Code: http.StatusSeeOther}
 }
 
 var (
-	oauthConf = &oauth2.Config{
+	oauthConf = oauth2.Config{
 		ClientID:     conf.Config.GitHubID,
 		ClientSecret: conf.Config.GitHubSecret,
 		Scopes:       []string{"user:email"},
