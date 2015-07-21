@@ -12,13 +12,13 @@
       <p>Plz give me ur email. :3 meow</p>
       <form method="post" action="/save_email">
         <input name="email">
-        <button class="btn btn-md btn-default">Register!</button>
+        <button class="btn btn-md btn-success">Register!</button>
       </form>
       {% else %}
       <p>YAY YOUR EMAIL IS {{ v.Email }}.</p>
       <p>
         <form method="post" action="/group/create">
-          <button class="btn btn-md btn-default">Create Group</button>
+          <button class="btn btn-md btn-success">Create Group</button>
         </form>
       </p>
       {% endif %}{# if needEmail #}
