@@ -27,26 +27,48 @@
       <p><button id="refresh" class="btn btn-md btn-success">Refresh GitHub Commits (dev)</button></p>
       <div id="commit-groups">
         {% for dcg in v.DayCommitGroups %}
-          {% with day=dcg.Day.Format("2006-01-02") %}
-          <div class="day" data-day="{{ day }}">
-            <p><span class="day-link">Commits on {{ day }}</span></p>
+        {% with day=dcg.Day.Format("2006-01-02") %}
+        <div class="day" data-day="{{ day }}">
+          <p>
+            <span class="day-link">Commits on {{ day }}</span>
+            <span data-component="changes"
+                  data-additions="{{ dcg.Additions }}"
+                  data-deletions="{{ dcg.Deletions }}"></span>
+          </p>
+          <div class="all-repos" >
             {% for cg in CommitGroups(dcg.Commits) %}
-              <div class="repo" data-repo="{{ cg.RepoName }}">
-                <p><span class="repo-link">Repo: {{ cg.RepoName }}</span></p>
-              {% for c in cg.Commits %}
+            <div class="repo" data-repo="{{ cg.RepoName }}">
+              <p>
+                <span class="repo-link">Repo: {{ cg.RepoName }}</span>
+                <span data-component="changes"
+                      data-additions="{{ cg.Additions }}"
+                      data-deletions="{{ cg.Deletions }}"></span>
+              </p>
+              <div class="all-commits" >
+                {% for c in cg.Commits %}
+                {% with commitUser= GetUser(c.UID) %}
                 <div class="commit"
                      data-sha="{{ c.SHA }}"
+                     data-user="{{ commitUser.Login }}"
                      data-message="{{ c.Message }}"
                      data-additions="{{ c.Additions }}"
                      data-deletions="{{ c.Deletions }}">
-                  Commit: {{ ShortSHA(c.SHA) }} {{ CommitMessageTitle(c.Message) }} Changes: + {{ c.Additions }} / - {{ c.Deletions }}
+                  User: {{ commitUser.Login }}
+                  Commit: {{ ShortSHA(c.SHA) }} -
+                  {{ CommitMessageTitle(c.Message) }} -
+                  <span data-component="changes"
+                        data-additions="{{ c.Additions }}"
+                        data-deletions="{{ c.Deletions }}"></span>
                 </div>
-              {% endfor %}
+                {% endwith %}
+                {% endfor %}{# c in cg.Commits #}
               </div>
-            {% endfor %}
             </div>
-          {% endwith %}
-        {% endfor %}
+            {% endfor %}{# cg in CommitGroups(dcg.Commits) #}
+          </div>
+        </div>
+        {% endwith %}
+        {% endfor %}{# dcg in v.DayCommitGroups #}
       </div>
     </div>
   </div>

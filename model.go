@@ -433,8 +433,10 @@ func (s SortableCommits) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s SortableCommits) Less(i, j int) bool { return s[i].AuthorDate.After(s[j].AuthorDate) }
 
 type CommitGroup struct {
-	RepoName string
-	Commits  []Commit
+	RepoName  string
+	Additions int
+	Deletions int
+	Commits   []Commit
 }
 
 type SortableCommitGroups []CommitGroup
@@ -451,9 +453,11 @@ func CommitGroups(commits []Commit) []CommitGroup {
 	// First, sort commits into CommitGroups by repo.
 	cgm := make(map[string]CommitGroup)
 	for _, c := range commits {
-		// This is essentially a no-op if cg.RepoName is not empty.
 		cg := cgm[c.RepoName]
+		// This is essentially a no-op if cg.RepoName is not empty.
 		cg.RepoName = c.RepoName
+		cg.Additions += c.Additions
+		cg.Deletions += c.Deletions
 		cg.Commits = append(cg.Commits, c)
 		cgm[c.RepoName] = cg
 	}
@@ -470,8 +474,10 @@ func CommitGroups(commits []Commit) []CommitGroup {
 }
 
 type DayCommitGroup struct {
-	Day     time.Time
-	Commits []Commit
+	Day       time.Time
+	Additions int
+	Deletions int
+	Commits   []Commit
 }
 
 // DayCommitGroups groups commits by day, sorted by the most recent
@@ -484,22 +490,29 @@ func DayCommitGroups(commits []Commit) []DayCommitGroup {
 	}
 	// First, sort the commits by time, descending.
 	sort.Sort(SortableCommits(commits))
-	var dcgs []DayCommitGroup
-	currentDCG := DayCommitGroup{
-		Day:     BeginningOfDay(commits[0].AuthorDate),
-		Commits: []Commit{commits[0]},
+	updateDCG := func(dcg *DayCommitGroup, c Commit) {
+		dcg.Commits = append(dcg.Commits, c)
+		// Update additions and deletions.
+		dcg.Additions += c.Additions
+		dcg.Deletions += c.Deletions
 	}
-	// Start with the second element.
+	var dcgs []DayCommitGroup
+	// Initialize currentDCG with the first element in commits.
+	var currentDCG DayCommitGroup
+	currentDCG.Day = BeginningOfDay(commits[0].AuthorDate)
+	updateDCG(&currentDCG, commits[0])
+	// Loop over the rest of the commits.
 	for i := 1; i < len(commits); i++ {
 		c := commits[i]
-		b := BeginningOfDay(c.AuthorDate)
-		if currentDCG.Day.After(b) {
-			// Set up new DCG.
+		if b := BeginningOfDay(c.AuthorDate); currentDCG.Day.After(b) {
+			// Append old DCG and initialize new DCG.
 			dcgs = append(dcgs, currentDCG)
-			currentDCG = DayCommitGroup{Day: b, Commits: []Commit{c}}
+			currentDCG = DayCommitGroup{Day: b}
+			updateDCG(&currentDCG, c)
 			continue
 		}
-		currentDCG.Commits = append(currentDCG.Commits, c)
+		// Update currentDCG with current commit.
+		updateDCG(&currentDCG, c)
 	}
 	// Append last DayCommitGroup.
 	dcgs = append(dcgs, currentDCG)

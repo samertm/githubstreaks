@@ -29,8 +29,8 @@ function getGID() {
   return Number(match[1])
 }
 
-window.onload = function() {
-  debugLog("Window loaded.");
+$(document).ready(function() {
+  debugLog("Document ready.");
   fixFooterPosition();
   // Refresh group commits button.
   $('#refresh').click(function(e) {
@@ -51,7 +51,7 @@ window.onload = function() {
 
   $('[data-toggle="tooltip"]').tooltip()
   $("#group-url").click(function(e) {
-      $(this).select();
+    $(this).select();
   });
 
   // Format commit groups.
@@ -67,36 +67,47 @@ window.onload = function() {
       var day = days[i];
       if (i != 0) {
         // Collapse the inner tags for every day but the first!
-        $(day).find(".repo").addClass("collapse");
+        $(day).find(".all-repos").hide();
       }
     }
-    // Also, attach links to the days (eventually).
-    $(".day-link").click(toggleDay);
-    $(".repo-link").click(toggleRepo);
+    // Also, attach links to the days.
+    $(".day-link").click(createToggle(".day", ".all-repos"));
+    $(".repo-link").click(createToggle(".repo", ".all-commits"));
   }
   formatCommitGroups();
 
-  // Toggle a single day on or off. Toggles off if any repo under the
-  // day is collapsed.
-  function toggleDay() {
-    debugLog("toggleDay fired.");
-    var repos = $(this).parents(".day").find(".repo");
-    if (repos.hasClass("collapse")) {
-      repos.removeClass("collapse");
-    } else {
-      repos.addClass("collapse");
+  // createToggle returns a function for toggling a container on or
+  // off. Usage: createToggle(".day", ".all-repos")
+  function createToggle(parentSelector, containerSelector) {
+    return function() {
+      debugLog("toggle fired for parent '" + parentSelector + "', container '" + containerSelector +"'.");
+      var container = $($(this).parents(parentSelector).find(containerSelector)[0]);
+      if (container.is(":hidden")) {
+        debugLog("sliding down");
+        container.slideDown("slow");
+      } else {
+        debugLog("sliding up");
+        container.slideUp("slow");
+      }
     }
   }
 
-  // Toggle a single repo on or off. Toggles off if any commit under
-  // the repo is collapsed.
-  function toggleRepo() {
-    debugLog("toggleRepo fired.");
-    var commits = $(this).parents(".repo").find(".commit");
-    if (commits.hasClass("collapse")) {
-      commits.removeClass("collapse");
-    } else {
-      commits.addClass("collapse");
-    }
-  }
-}
+  // Set changes tags.
+  var Changes = React.createClass({
+    render: function() {
+      return <span className="changes">
+        <span className="additions">+ {this.props.additions}</span>
+        <span> / </span>
+        <span className="deletions">- {this.props.deletions}</span>
+      </span>;
+    },
+  });
+  $('[data-component="changes"]').each(function(i, e) {
+    React.render(
+        <Changes
+      additions={e.getAttribute("data-additions")}
+      deletions={e.getAttribute("data-deletions")}/>,
+      e
+    );
+  });
+});

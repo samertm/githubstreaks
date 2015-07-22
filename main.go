@@ -27,6 +27,8 @@ type errorTemplateVars struct {
 	Code    int
 }
 
+// baseContext is the context that is fed into every template. Keep in
+// alphabetical order: abcdefghijklmnopqrstuvwxyz.
 var baseContext = pongo2.Context{
 	"AbsoluteURL":        AbsoluteURL,
 	"CommitGroups":       CommitGroups,
@@ -34,6 +36,10 @@ var baseContext = pongo2.Context{
 	"GetGroupUsers": func(g Group) []User {
 		us, _ := GetGroupUsers(g)
 		return us
+	},
+	"GetUser": func(uid int) User {
+		u, _ := GetUser(UserSpec{UID: uid})
+		return u
 	},
 	"GroupShareURL": GroupShareURL,
 	"GroupURL":      GroupURL,

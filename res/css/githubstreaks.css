@@ -30,3 +30,11 @@ header {
     cursor: pointer;
     text-decoration: underline;
 }
+
+.changes > .additions {
+    color: green;
+}
+
+.changes > .deletions {
+    color: red;
+}

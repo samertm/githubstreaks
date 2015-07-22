@@ -15,6 +15,8 @@ type ConfigVars struct {
 	PostgresDataSource string
 	SessionKey         string
 	OAuthStateString   string
+	// SAMER: Read in Debug from the environment too.
+	Debug string
 }
 
 var Config ConfigVars
