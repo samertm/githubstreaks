@@ -11,7 +11,18 @@
         <li>{{ u.Login }}</li>
       {% endfor %}
       </ul>
-      <p>Share this URL with someone else to get them to join the group (my english skills have atrophied so bad): {{ AbsoluteURL(GroupShareURL(v.Group)) }}</p>
+      <p>Share this URL with a friend so they can join your group!</p>
+      <div class="form-group">
+        <input id="group-url"
+               data-toggle="tooltip"
+               data-placement="top"
+               title="Copy this URL."
+               class="form-control"
+               type="text"
+               readonly="readonly"
+               value="{{ AbsoluteURL(GroupShareURL(v.Group)) }}" >
+      </div>
+
       <p>Make a commit on GitHub to see it below!</p>
       <p><button id="refresh" class="btn btn-md btn-success">Refresh GitHub Commits (dev)</button></p>
       {% for dcg in v.DayCommitGroups %}

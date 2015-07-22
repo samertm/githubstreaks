@@ -13,3 +13,7 @@ header {
 .navbar {
     margin-bottom: 0px;
 }
+
+#group-url {
+    text-align: center;
+}

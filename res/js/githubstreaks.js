@@ -39,4 +39,9 @@ window.onload = function() {
       },
     });
   });
+
+  $('[data-toggle="tooltip"]').tooltip()
+  $("#group-url").click(function(e) {
+      $(this).select();
+  });
 }
