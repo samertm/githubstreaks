@@ -17,3 +17,16 @@ header {
 #group-url {
     text-align: center;
 }
+
+.day-link {
+    color: blue;
+    cursor: pointer;
+    text-decoration: underline;
+    width: auto;
+}
+
+.repo-link {
+    color: blue;
+    cursor: pointer;
+    text-decoration: underline;
+}
