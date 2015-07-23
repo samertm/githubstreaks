@@ -14,8 +14,9 @@ var driverName = "postgres"
 var DB *sqlx.DB
 
 func init() {
-	// Don't initalize database connection during tests.
+	// Substitute the database with a mock for tests.
 	if conf.Config.PostgresDataSource == "TESTING" {
+		DB = GetSetMock()
 		return
 	}
 	DB = sqlx.MustConnect(driverName, conf.Config.PostgresDataSource)
