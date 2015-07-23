@@ -30,7 +30,7 @@
         {% with day=dcg.Day.Format("2006-01-02") %}
         <div class="day" data-day="{{ day }}">
           <p>
-            <span class="day-link">Commits on {{ day }}</span>
+            <span data-component="day-bar" data-day="{{ day }}"></span>
             <span data-component="changes"
                   data-additions="{{ dcg.Additions }}"
                   data-deletions="{{ dcg.Deletions }}"></span>
