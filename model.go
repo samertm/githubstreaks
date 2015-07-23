@@ -26,7 +26,7 @@ var schemas []string
 // It must be called before starting the app.
 func ExecuteSchemas() {
 	for _, s := range schemas {
-		db.DB.MustExec(userSchema)
+		db.DB.MustExec(s)
 	}
 }
 
