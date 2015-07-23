@@ -3,6 +3,8 @@ language: go
 go:
   - tip
 
+before_install: ln -s conf.toml.example conf.toml
+
 install: go get -t ./...
 
 script: go test -v ./...

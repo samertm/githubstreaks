@@ -1,0 +1,8 @@
+# Example conf.toml file.
+GitHubID = "ffffffffffffffffffff"
+GitHubSecret = "ffffffffffffffffffffffffffffffffffffffff"
+BaseURL = "http://localhost"
+PostgresDataSource = "TESTING"
+SessionKey = "ffffffffffffffffffffffffffffffff"
+OAuthStateString = "ffffffffffffffffffffffffffffffff"
+Debug = "*"

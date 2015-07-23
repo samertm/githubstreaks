@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
@@ -11,7 +12,15 @@ import (
 
 var driverName = "postgres"
 
-var DB *sqlx.DB = sqlx.MustConnect(driverName, conf.Config.PostgresDataSource)
+var DB *sqlx.DB
+
+func init() {
+	db, err := sqlx.Connect(driverName, conf.Config.PostgresDataSource)
+	if err != nil {
+		log.Printf("Could not connect to db: %s", err)
+	}
+	DB = db
+}
 
 type Binder struct {
 	Len   int
