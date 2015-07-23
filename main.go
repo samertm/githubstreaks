@@ -277,6 +277,8 @@ func UnauthedGitHubClient(transport http.RoundTripper) *github.Client {
 }
 
 func main() {
+	// Initalize database.
+	ExecuteSchemas()
 	// Serve static files.
 	staticDirs := []string{"bower_components", "res"}
 	for _, d := range staticDirs {

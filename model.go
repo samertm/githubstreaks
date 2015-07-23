@@ -17,6 +17,19 @@ import (
 	"github.com/samertm/githubstreaks/db"
 )
 
+// schemas is a list of all of the database schemas. All of the
+// schemas must be executed before the app starts. Each new database
+// schema should be added to schemas.
+var schemas []string
+
+// ExecuteSchemas executes all of the schemas defined for the models.
+// It must be called before starting the app.
+func ExecuteSchemas() {
+	for _, s := range schemas {
+		db.DB.MustExec(userSchema)
+	}
+}
+
 // User represents a user on githubstreaks.
 type User struct {
 	// UID is the user's unique id. UIDs start at 1, 0 is not a
@@ -53,7 +66,7 @@ CREATE TABLE IF NOT EXISTS "user" (
 `
 
 func init() {
-	db.DB.MustExec(userSchema)
+	schemas = append(schemas, userSchema)
 }
 
 // UserSpec represents a unique identifier for a user. Either UID or
@@ -231,7 +244,7 @@ CREATE TABLE IF NOT EXISTS "group" (
 )`
 
 func init() {
-	db.DB.MustExec(groupSchema)
+	schemas = append(schemas, groupSchema)
 }
 
 // UserGroup represents a many-to-many relation between users and
@@ -249,7 +262,7 @@ CREATE TABLE IF NOT EXISTS user_group (
 )`
 
 func init() {
-	db.DB.MustExec(userGroupSchema)
+	schemas = append(schemas, userGroupSchema)
 }
 
 // CreateGroup creates a group and adds u as its first user.
@@ -441,8 +454,8 @@ CREATE TABLE IF NOT EXISTS "commit_file" (
 )
 
 func init() {
-	db.DB.MustExec(commitSchema)
-	db.DB.MustExec(commitFileSchema)
+	schemas = append(schemas, commitSchema)
+	schemas = append(schemas, commitFileSchema)
 }
 
 // GetCommits gets the commits for sha.
