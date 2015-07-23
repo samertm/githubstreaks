@@ -17,16 +17,27 @@ import (
 	"github.com/samertm/githubstreaks/db"
 )
 
+// User represents a user on githubstreaks.
 type User struct {
-	UID   int    `db:"uid"`
-	Login string `db:"login"`
-	// SAMER: Make this unique.
-	Email       sql.NullString `db:"email"`
+	// UID is the user's unique id. UIDs start at 1, 0 is not a
+	// valid UID.
+	UID int `db:"uid"`
+	// Login is the user's username. It is the same as their
+	// GitHub login.
+	Login string         `db:"login"`
+	Email sql.NullString `db:"email"`
+	// AccessToken is the user's GitHub access token.
 	AccessToken sql.NullString `db:"access_token"`
-	ExpiresOn   *time.Time     `db:"expires_on"`
-	// SAMER: Commits last updated on is never used?
-	CommitsLastUpdatedOn *time.Time     `db:"commits_last_updated_on"`
-	ETag                 sql.NullString `db:"etag"`
+	// ExpiresOn is when the user's GitHub access token
+	// expires.
+	ExpiresOn *time.Time `db:"expires_on"`
+	// CommitsLastUpdatedOn is the date that the user's commits
+	// were last updated. It is never used, and should probably be
+	// removed.
+	CommitsLastUpdatedOn *time.Time `db:"commits_last_updated_on"`
+	// ETag is the etag retrieved from the last request for the
+	// user's events from GitHub.
+	ETag sql.NullString `db:"etag"`
 }
 
 var userSchema = `
@@ -45,11 +56,16 @@ func init() {
 	db.DB.MustExec(userSchema)
 }
 
+// UserSpec represents a unique identifier for a user. Either UID or
+// Login must not be their type's zero value (0 and "", respectively)
+// when UserSpec is used.
 type UserSpec struct {
 	UID   int
 	Login string
 }
 
+// GetCreateUser gets the user for login, or creates them if they do
+// not exist.
 func GetCreateUser(login string) (User, error) {
 	// Try to get the user once.
 	u, err := GetUser(UserSpec{Login: login})
@@ -69,6 +85,7 @@ func GetCreateUser(login string) (User, error) {
 	return u, nil
 }
 
+// CreateUser creates a user for login.
 func CreateUser(login string) error {
 	query := `INSERT INTO "user"(login) VALUES ($1)`
 	if _, err := db.DB.Exec(query, login); err != nil {
@@ -77,6 +94,7 @@ func CreateUser(login string) error {
 	return nil
 }
 
+// GetUser gets a user identified by us.
 func GetUser(us UserSpec) (User, error) {
 	u := User{}
 	where := struct {
@@ -100,6 +118,7 @@ func GetUser(us UserSpec) (User, error) {
 	return u, nil
 }
 
+// GetUserCommits gets u's commits made after after.
 func GetUserCommits(u User, after time.Time) ([]Commit, error) {
 	b := &db.Binder{}
 	query := `SELECT * FROM commit
@@ -111,6 +130,7 @@ WHERE uid = ` + b.Bind(u.UID) + ` AND author_date > ` + b.Bind(after)
 	return commits, nil
 }
 
+// SetEmail sets u's email to email in the database.
 func SetEmail(u User, email string) error {
 	b := &db.Binder{}
 	query := `UPDATE "user" SET email = ` + b.Bind(email) + " " +
@@ -121,6 +141,8 @@ func SetEmail(u User, email string) error {
 	return nil
 }
 
+// SetAccessToken sets u's access token and exiration in the database.
+// TODO(samertm): Remove this function because it is unused.
 func SetAccessToken(u User, token string, expiresIn string) error {
 	e, err := strconv.Atoi(expiresIn)
 	if err != nil {
@@ -137,6 +159,8 @@ func SetAccessToken(u User, token string, expiresIn string) error {
 	return nil
 }
 
+// SetCommitsLastUpdatedOn set u's CommitsLastUpdatedOn field to t in
+// the database.
 func SetCommitsLastUpdatedOn(u User, t time.Time) error {
 	b := &db.Binder{}
 	query := `UPDATE "user" SET commits_last_updated_on = ` + b.Bind(t) + ` ` +
@@ -153,6 +177,8 @@ func SetCommitsLastUpdatedOn(u User, t time.Time) error {
 // returns the beginning of the day for the user's oldest group. If
 // the user does not belong to any groups, it returns the beginning of
 // today.
+//
+// TODO(samertm): Remove this logic?
 func UpdateTime(u User) (time.Time, error) {
 	// SAMER: Rethink this. I may want to update people even if
 	// they don't belong to a group.
@@ -176,10 +202,12 @@ func UpdateTime(u User) (time.Time, error) {
 	return BeginningOfDay(oldestGroup), nil
 }
 
+// BeginningOfDay returns the beginning of the day for t.
 func BeginningOfDay(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
+// SetETag sets u's etag to etag in the database.
 func SetETag(u User, etag string) error {
 	b := &db.Binder{}
 	query := `UPDATE "user" SET etag = ` + b.Bind(etag) + ` ` +
@@ -190,12 +218,10 @@ func SetETag(u User, etag string) error {
 	return nil
 }
 
-// SAMER: Pick another name.
+// Group represents a collaborative GitHub projects group.
 type Group struct {
 	GID       int       `db:"gid"`
 	CreatedOn time.Time `db:"created_on"`
-	//UIDs []int `db:"uids"`
-	// SAMER: Group name?
 }
 
 var groupSchema = `
@@ -208,6 +234,8 @@ func init() {
 	db.DB.MustExec(groupSchema)
 }
 
+// UserGroup represents a many-to-many relation between users and
+// groups. This type exists solely for interfacing with the database.
 type UserGroup struct {
 	UID int `db:"uid"`
 	GID int `db:"gid"`
@@ -223,6 +251,7 @@ func init() {
 	db.DB.MustExec(userGroupSchema)
 }
 
+// CreateGroup creates a group and adds u as its first user.
 func CreateGroup(u User) (Group, error) {
 	b := &db.Binder{}
 	query := `
@@ -240,6 +269,7 @@ SELECT gid FROM g`
 	return g, nil
 }
 
+// GroupAddUser adds u to group g in the database.
 func GroupAddUser(g Group, u User) error {
 	b := &db.Binder{}
 	query := `
@@ -250,16 +280,19 @@ INSERT INTO user_group(uid, gid) VALUES (` + b.Bind(u.UID, g.GID) + `)`
 	return nil
 }
 
-// SAMER: This should be baked into the router. Use gorilla.Mux?
+// GroupURL returns a url for navigating to g.
 func GroupURL(g Group) string {
 	return "/group/" + strconv.Itoa(g.GID)
 }
 
+// GroupShareURL returns a url for joining g.
 func GroupShareURL(g Group) string {
 	return "/group/" + strconv.Itoa(g.GID) + "/join?key=" + GroupSecretKey(g)
 }
 
-// SAMER: Make secret key even more secret?
+// GroupSecretKey returns the secret key for group, for authenticating
+// the group share URL. It is based on the GID and g's CreatedOn
+// timestamp.
 func GroupSecretKey(g Group) string {
 	m := md5.New()
 	m.Write([]byte(strconv.Itoa(g.GID)))
@@ -267,6 +300,7 @@ func GroupSecretKey(g Group) string {
 	return hex.EncodeToString(m.Sum(nil))
 }
 
+// GetGroup returns the group for gid.
 func GetGroup(gid int) (Group, error) {
 	b := &db.Binder{}
 	query := `SELECT * FROM "group" WHERE gid = ` + b.Bind(gid)
@@ -277,6 +311,7 @@ func GetGroup(gid int) (Group, error) {
 	return g, nil
 }
 
+// GetGroups returns all of the groups that the user is in.
 func GetGroups(u User) ([]Group, error) {
 	b := &db.Binder{}
 	query := `
@@ -291,6 +326,7 @@ ORDER BY gid ASC`
 	return gs, nil
 }
 
+// GetGroupUsers gets the users in g.
 func GetGroupUsers(g Group) ([]User, error) {
 	// Too lazy to figure out how joining works.
 	b := &db.Binder{}
@@ -310,6 +346,7 @@ func GetGroupUsers(g Group) ([]User, error) {
 	return us, nil
 }
 
+// GetGroupAllCommits gets the commits in g.
 func GetGroupAllCommits(g Group) ([]Commit, error) {
 	us, err := GetGroupUsers(g)
 	if err != nil {
@@ -317,7 +354,6 @@ func GetGroupAllCommits(g Group) ([]Commit, error) {
 	}
 	var cs []Commit
 	for _, u := range us {
-		// SAMER: Clean up 'BeginningOfDay' stuff.
 		c, err := GetUserCommits(u, BeginningOfDay(g.CreatedOn))
 		if err != nil {
 			return nil, wrapError(err)
@@ -327,6 +363,8 @@ func GetGroupAllCommits(g Group) ([]Commit, error) {
 	return cs, nil
 }
 
+// UpdateGroupCommits updates all of g's users' commits from GitHub.
+//
 // SAMER: Make these methods... Or have a consistant naming scheme +
 // explain in a doc comment.
 func UpdateGroupCommits(g Group) error {
@@ -342,28 +380,42 @@ func UpdateGroupCommits(g Group) error {
 	return nil
 }
 
+// Commit represents a Git commit.
 type Commit struct {
-	SHA        string    `db:"sha"`
-	UID        int       `db:"uid"`
+	// SHA is the commit's full 40-character hash. It is used as
+	// the commit's id and is assumed to be globally unique.
+	SHA string `db:"sha"`
+	// UID is the user that owns the commit. It is determined by
+	// GitHub.
+	UID int `db:"uid"`
+	// AuthorDate is the date the commit was authored (separate
+	// from the date the commit was committed).
 	AuthorDate time.Time `db:"author_date"`
-	RepoName   string    `db:"repo_name"`
-	Message    string    `db:"message"`
-	Additions  int       `db:"additions"`
-	Deletions  int       `db:"deletions"`
-	//Files []CommitFile
+	// RepoName is the name of the repo that the commit belongs to
+	// on GitHub. It is in the form "user/repo".
+	// TODO(samertm): Rename to FullRepoName.
+	RepoName string `db:"repo_name"`
+	// Message is the full commit message. Pass it into
+	// CommitMessageTitle to get the short title for the message.
+	Message string `db:"message"`
+	// Additions is the number of additions.
+	Additions int `db:"additions"`
+	// Deletions is the number of deletions.
+	Deletions int `db:"deletions"`
 }
 
 type CommitFile struct {
+	// CommitSHA is the commit that CommitFile is associated with.
 	CommitSHA string `db:"commit_sha"`
 	Filename  string `db:"filename"`
 	// Status is one of "modified", "removed", "added".
 	Status    string `db:"status"`
 	Additions int    `db:"additions"`
 	Deletions int    `db:"deletions"`
-	Patch     string `db:"patch"`
+	// Patch is the full patch for this commit.
+	Patch string `db:"patch"`
 }
 
-// SAMER: repo_name -> full_repo_name?
 var (
 	commitSchema = `
 CREATE TABLE IF NOT EXISTS "commit" (
@@ -392,6 +444,7 @@ func init() {
 	db.DB.MustExec(commitFileSchema)
 }
 
+// GetCommits gets the commits for sha.
 func GetCommit(sha string) (Commit, error) {
 	b := &db.Binder{}
 	query := `SELECT * FROM commit WHERE sha = ` + b.Bind(sha)
@@ -404,6 +457,8 @@ func GetCommit(sha string) (Commit, error) {
 
 var sqlNotFound = "no rows in result set"
 
+// CommitExists returns true if the commit specified by sha exists in
+// the database.
 func CommitExists(sha string) (bool, error) {
 	if _, err := GetCommit(sha); err != nil {
 		if strings.Contains(err.Error(), sqlNotFound) {
@@ -414,7 +469,7 @@ func CommitExists(sha string) (bool, error) {
 	return true, nil
 }
 
-// SAMER: Use functions or methods.
+// ShortSHA truncates sha to seven characters.
 func ShortSHA(sha string) string {
 	if len(sha) < 7 {
 		return sha
@@ -422,6 +477,7 @@ func ShortSHA(sha string) string {
 	return sha[:8]
 }
 
+// CommitMessageTitle returns the short title for the message.
 func CommitMessageTitle(m string) string {
 	return strings.Split(m, "\n")[0]
 }
@@ -432,11 +488,15 @@ func (s SortableCommits) Len() int           { return len(s) }
 func (s SortableCommits) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s SortableCommits) Less(i, j int) bool { return s[i].AuthorDate.After(s[j].AuthorDate) }
 
+// CommitGroup represents a set of commits grouped by Repo. All of the
+// commits should have the same repo name.
 type CommitGroup struct {
 	RepoName  string
 	Additions int
 	Deletions int
-	Commits   []Commit
+	// Commits is the list of commits associated with the repo.
+	// The commits are in descending order.
+	Commits []Commit
 }
 
 type SortableCommitGroups []CommitGroup
@@ -447,8 +507,8 @@ func (s SortableCommitGroups) Less(i, j int) bool {
 	return s[i].Commits[0].AuthorDate.After(s[j].Commits[0].AuthorDate)
 }
 
-// CommitGroups groups commits by repo, sorted by the most recent
-// commits.
+// CommitGroups returns a slice of CommitGroup, sorted by the most
+// recent commits.
 func CommitGroups(commits []Commit) []CommitGroup {
 	// First, sort commits into CommitGroups by repo.
 	cgm := make(map[string]CommitGroup)
@@ -473,11 +533,14 @@ func CommitGroups(commits []Commit) []CommitGroup {
 	return cgs
 }
 
+// DayCommitGroup represents a set of commits sorted by day.
 type DayCommitGroup struct {
 	Day       time.Time
 	Additions int
 	Deletions int
-	Commits   []Commit
+	// Commits is the list of commits associated with the day. The
+	// commits are in descending order.
+	Commits []Commit
 }
 
 // DayCommitGroups groups commits by day, sorted by the most recent
@@ -519,11 +582,15 @@ func DayCommitGroups(commits []Commit) []DayCommitGroup {
 	return dcgs
 }
 
+// GitHubCommitRepo associates a RepositoryCommit with a RepoName.
 type GitHubCommitRepo struct {
 	github.RepositoryCommit
 	RepoName string
 }
 
+// FetchRecentCommits fetches the commits for u from GitHub. If
+// transport is nil, the default transport is used. Pass in an
+// ETagTransport to keep track of u's etag.
 func FetchRecentCommits(u User, transport http.RoundTripper) ([]GitHubCommitRepo, error) {
 	client := UnauthedGitHubClient(transport)
 	es, resp, err := client.Activity.ListEventsPerformedByUser(u.Login, true, nil)
@@ -562,11 +629,15 @@ func FetchRecentCommits(u User, transport http.RoundTripper) ([]GitHubCommitRepo
 	return cs, nil
 }
 
+// SplitRepoName splits fullRepoName into the userName and the
+// repoName. It panics if fullRepoName does not contain a "/".
 func SplitRepoName(fullRepoName string) (userName, repoName string) {
 	s := strings.Split(fullRepoName, "/")
 	return s[0], s[1]
 }
 
+// UpdateUserCommits updates u's commits by fetching them from GitHub
+// and saving them in the database.
 func UpdateUserCommits(u User) error {
 	// SAMER: Do I need this?
 	// t, err := UpdateTime(u)
@@ -599,6 +670,7 @@ func UpdateUserCommits(u User) error {
 	return nil
 }
 
+// CreateCommit creates a commit c for u in the database.
 func CreateCommit(u User, c GitHubCommitRepo) error {
 	if u.Login != *c.Author.Login {
 		// Ignore the commit if the author does not match u.
