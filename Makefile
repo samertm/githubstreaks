@@ -15,7 +15,7 @@ psql:
 	psql -h localhost -U ghs
 
 test:
-	go test $(ARGS) ./...
+	go test -v $(ARGS) ./...
 
 docker-deps:
 	$(MAKE) -C postgres-docker docker-build
