@@ -18,7 +18,7 @@ remote-psql:
 	ssh -t $(TO) 'docker exec -it ghs-db bash -c "psql -U ghs"' # -t means ssh in tty mode.
 
 test:
-	go test -v -cover $(ARGS) ./...
+	go test -v $(ARGS) ./...
 
 docker-deps:
 	$(MAKE) -C postgres-docker docker-build

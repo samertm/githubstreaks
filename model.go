@@ -665,6 +665,10 @@ func CreateCommit(u User, c GitHubCommitRepo) error {
 		// Ignore the commit if the author does not match u.
 		return nil
 	}
+	tx, err := db.DB.Beginx()
+	if err != nil {
+		return wrapError(err)
+	}
 	if c.Message == nil {
 		c.Message = github.String("")
 	}
@@ -675,7 +679,7 @@ INSERT INTO commit(sha, uid, author_date, repo_name, message, additions, deletio
 		b.Bind(*c.SHA, u.UID, *c.Commit.Author.Date,
 			c.RepoName, *c.Commit.Message, *c.Stats.Additions, *c.Stats.Deletions) +
 		`)`
-	if _, err := db.DB.Exec(query, b.Items...); err != nil {
+	if _, err := tx.Exec(query, b.Items...); err != nil {
 		// Ignore if we've seen this commit.
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			return nil
@@ -693,9 +697,12 @@ INSERT INTO commit_file(commit_sha, filename, status, additions, deletions, patc
   VALUES (` +
 			b.Bind(*c.SHA, *f.Filename, *f.Status, *f.Additions, *f.Deletions, *f.Patch) +
 			`)`
-		if _, err := db.DB.Exec(query, b.Items...); err != nil {
+		if _, err := tx.Exec(query, b.Items...); err != nil {
 			return wrapError(err)
 		}
+	}
+	if err := tx.Commit(); err != nil {
+		return wrapError(err)
 	}
 	return nil
 }
