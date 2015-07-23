@@ -1,4 +1,4 @@
-.PHONY: serve watch-serve db-reset test docker-deps docker-build docker-run docker deploy-deps deploy
+.PHONY: serve watch-serve db-reset psql remote-psql test docker-deps docker-build docker-run docker deploy-deps deploy
 
 serve:
 	go install github.com/samertm/githubstreaks
@@ -14,8 +14,11 @@ db-reset:
 psql:
 	psql -h localhost -U ghs
 
+remote-psql:
+	ssh -t $(TO) 'docker exec -it ghs-db bash -c "psql -U ghs"' # -t means ssh in tty mode.
+
 test:
-	go test -v $(ARGS) ./...
+	go test -v -cover $(ARGS) ./...
 
 docker-deps:
 	$(MAKE) -C postgres-docker docker-build

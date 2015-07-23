@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"strconv"
 	"testing"
@@ -59,6 +60,47 @@ func TestCreateUser(t *testing.T) {
 		WithArgs(login).
 		WillReturnResult(sqlmock.NewResult(0, 1)) // 1 affected row.
 	if err := CreateUser(login); err != nil {
+		t.Error(err)
+	}
+	if err := mdb.Close(); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestGetCreateUser(t *testing.T) {
+	mdb := db.GetSetMock()
+	login := "strange-login"
+	sqlmock.ExpectQuery(`SELECT \* from "user" WHERE login.*`).
+		WithArgs(login).
+		WillReturnError(fmt.Errorf("user not found"))
+	sqlmock.ExpectExec(`INSERT INTO "user".*`).
+		WithArgs(login).
+		WillReturnResult(sqlmock.NewResult(0, 1)) // 1 affected row.
+	sqlmock.ExpectQuery(`SELECT \* from "user" WHERE login.*`).
+		WithArgs(login).
+		WillReturnRows(
+		sqlmock.NewRows([]string{"uid", "login"}).
+			AddRow(1, login))
+	u, err := GetCreateUser(login)
+	if err != nil {
+		t.Error(err)
+	}
+	if u.Login != login {
+		t.Errorf("Got user login %s, wanted %s", u.Login, login)
+	}
+	if err := mdb.Close(); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestSetEmail(t *testing.T) {
+	mdb := db.GetSetMock()
+	email := "something@something.com"
+	uid := 1
+	sqlmock.ExpectExec(`UPDATE "user" SET email = .* WHERE uid = .*`).
+		WithArgs(email, uid).
+		WillReturnResult(sqlmock.NewResult(0, 1)) // 1 affected row.
+	if err := SetEmail(User{UID: 1}, email); err != nil {
 		t.Error(err)
 	}
 	if err := mdb.Close(); err != nil {
