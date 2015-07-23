@@ -244,7 +244,8 @@ type UserGroup struct {
 var userGroupSchema = `
 CREATE TABLE IF NOT EXISTS user_group (
   uid integer REFERENCES "user" (uid),
-  gid integer REFERENCES "group" (gid)
+  gid integer REFERENCES "group" (gid),
+  CONSTRAINT uid_gid UNIQUE(uid, gid)
 )`
 
 func init() {
