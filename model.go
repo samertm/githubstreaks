@@ -39,11 +39,6 @@ type User struct {
 	// GitHub login.
 	Login string         `db:"login"`
 	Email sql.NullString `db:"email"`
-	// AccessToken is the user's GitHub access token.
-	AccessToken sql.NullString `db:"access_token"`
-	// ExpiresOn is when the user's GitHub access token
-	// expires.
-	ExpiresOn *time.Time `db:"expires_on"`
 	// CommitsLastUpdatedOn is the date that the user's commits
 	// were last updated. It is never used, and should probably be
 	// removed.
@@ -58,8 +53,6 @@ CREATE TABLE IF NOT EXISTS "user" (
   uid SERIAL PRIMARY KEY,
   login text NOT NULL,
   email text,
-  access_token text,
-  expires_on timestamp,
   commits_last_updated_on timestamp,
   etag text
 )
@@ -147,24 +140,6 @@ WHERE uid = ` + b.Bind(u.UID) + ` AND author_date > ` + b.Bind(after)
 func SetEmail(u User, email string) error {
 	b := &db.Binder{}
 	query := `UPDATE "user" SET email = ` + b.Bind(email) + " " +
-		"WHERE uid = " + b.Bind(u.UID)
-	if _, err := db.DB.Exec(query, b.Items...); err != nil {
-		return wrapError(err)
-	}
-	return nil
-}
-
-// SetAccessToken sets u's access token and exiration in the database.
-// TODO(samertm): Remove this function because it is unused.
-func SetAccessToken(u User, token string, expiresIn string) error {
-	e, err := strconv.Atoi(expiresIn)
-	if err != nil {
-		return wrapError(err)
-	}
-	expiresOn := time.Now().Add(time.Duration(e) * time.Second)
-	b := &db.Binder{}
-	query := `UPDATE "user" SET access_token = ` + b.Bind(token) + ", " +
-		"expires_on = " + b.Bind(expiresOn) + " " +
 		"WHERE uid = " + b.Bind(u.UID)
 	if _, err := db.DB.Exec(query, b.Items...); err != nil {
 		return wrapError(err)
