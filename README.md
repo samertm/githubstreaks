@@ -1,3 +1,5 @@
+# GitHubStreaks [![Build Status](https://travis-ci.org/samertm/githubstreaks.svg)](https://travis-ci.org/samertm/githubstreaks)
+
 # Setup
 
 ```bash
