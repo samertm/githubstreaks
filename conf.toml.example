@@ -2,7 +2,7 @@
 GitHubID = "ffffffffffffffffffff"
 GitHubSecret = "ffffffffffffffffffffffffffffffffffffffff"
 BaseURL = "http://localhost"
-PostgresDataSource = "TESTING"
+PostgresDataSource = "sslmode=disable dbname=blah user=blah"
 SessionKey = "ffffffffffffffffffffffffffffffff"
 OAuthStateString = "ffffffffffffffffffffffffffffffff"
 Debug = "*"
