@@ -3,12 +3,15 @@ package db
 import (
 	"fmt"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/samertm/githubstreaks/conf"
 )
 
-var DB *sqlx.DB = sqlx.MustConnect("postgres", conf.Config.PostgresDataSource)
+var driverName = "postgres"
+
+var DB *sqlx.DB = sqlx.MustConnect(driverName, conf.Config.PostgresDataSource)
 
 type Binder struct {
 	Len   int
@@ -27,4 +30,20 @@ func (b *Binder) Bind(vs ...interface{}) string {
 		}
 	}
 	return str
+}
+
+// GetSetMock creates a sqlx.DB pointer created by the sqlmock
+// package, sets the global database to that pointer, and returns it.
+// It is used for testing. If there is an error creating the mock,
+// GetMock panics.
+//
+// Keep in mind, sqlmock cannot be used in parallel tests.
+func GetSetMock() *sqlx.DB {
+	db, err := sqlmock.New()
+	if err != nil {
+		panic(err)
+	}
+	dbx := sqlx.NewDb(db, driverName)
+	DB = dbx
+	return dbx
 }
