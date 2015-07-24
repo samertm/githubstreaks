@@ -217,7 +217,7 @@ var groupSchema = `
 CREATE TABLE IF NOT EXISTS "group" (
   gid SERIAL PRIMARY KEY,
   created_on timestamp NOT NULL,
-  timezone string NOT NULL
+  timezone text NOT NULL
 )`
 
 func init() {
