@@ -1,13 +1,38 @@
-
+* { padding: 0; margin: 0; }
+html, body { height: 100%; width: 100%; }
 
 header {
     background: #d3b1fa;
     color: black;
 }
 
+#content {
+    min-height: 100%;
+    margin-bottom: -100px; /* Equivalent to footer's height */
+}
+
+.spacer, #footer {
+    height: 100px;
+}
+
 #footer {
+    position: relative;
+    z-index: 1;
+}
+
+.footer {
     background-color:#2c3e50;
     border-color:transparent;
+    margin-bottom: 0px;
+}
+
+.footer .footer-text {
+    color: #FFF;
+}
+
+.footer .footer-text:hover, .footer .footer-text:focus {
+    color: #18BC9C;
+    background-color: transparent;
 }
 
 .navbar {

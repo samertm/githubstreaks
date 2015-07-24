@@ -14,9 +14,13 @@
     </nav>
     <header id="content">
     {% block content %}{% endblock %}
+    <!-- SAMER: Is the spacer necessary? -->
+    <div class="spacer"></div>
     </header>
-    <div id="footer">
-      <p>Footer stuff!</p>
+    <div id="footer" class="footer">
+      <div class="container">
+        <div class="footer-text">Footer stuff!</div>
+      </div>
     </div> 
     <script src="/bower_components/jquery/dist/jquery.min.js"></script>
     <script src="/bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
