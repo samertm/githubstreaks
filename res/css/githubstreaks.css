@@ -1,6 +1,11 @@
 * { padding: 0; margin: 0; }
 html, body { height: 100%; width: 100%; }
 
+header > nav > .container {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
 header {
     background: #d3b1fa;
     color: black;
@@ -8,11 +13,11 @@ header {
 
 #content {
     min-height: 100%;
-    margin-bottom: -100px; /* Equivalent to footer's height */
+    margin-bottom: -50px; /* Equivalent to footer's height */
 }
 
 .spacer, #footer {
-    height: 100px;
+    height: 50px;
 }
 
 #footer {
