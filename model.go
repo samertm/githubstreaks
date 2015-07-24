@@ -191,8 +191,16 @@ func UpdateTime(u User) (time.Time, error) {
 }
 
 // BeginningOfDay returns the beginning of the day for t.
+// TODO(samertm): Right now, we assume that the correct timezone for
+// each commit is 'America/Los_Angeles'. That obviously isn't always
+// true..
 func BeginningOfDay(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+	l, err := time.LoadLocation("America/Los_Angeles")
+	if err != nil {
+		panic(err)
+	}
+	newT := t.In(l)
+	return time.Date(newT.Year(), newT.Month(), newT.Day(), 0, 0, 0, 0, newT.Location())
 }
 
 // SetETag sets u's etag to etag in the database.
@@ -378,7 +386,8 @@ type Commit struct {
 	// GitHub.
 	UID int `db:"uid"`
 	// AuthorDate is the date the commit was authored (separate
-	// from the date the commit was committed).
+	// from the date the commit was committed). It is stored as
+	// UTC.
 	AuthorDate time.Time `db:"author_date"`
 	// RepoName is the name of the repo that the commit belongs to
 	// on GitHub. It is in the form "user/repo".
