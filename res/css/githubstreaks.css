@@ -35,9 +35,15 @@ header {
     color: #FFF;
 }
 
-.footer .footer-text:hover, .footer .footer-text:focus {
+.footer .footer-text > a{
+    color: #FFF;
+    text-decoration: underline;
+}
+
+.footer .footer-text > a:hover, .footer .footer-text > a:focus {
     color: #18BC9C;
     background-color: transparent;
+    text-decoration: underline;
 }
 
 .navbar {
