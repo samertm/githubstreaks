@@ -191,16 +191,8 @@ func UpdateTime(u User) (time.Time, error) {
 }
 
 // BeginningOfDay returns the beginning of the day for t.
-// TODO(samertm): Right now, we assume that the correct timezone for
-// each commit is 'America/Los_Angeles'. That obviously isn't always
-// true..
 func BeginningOfDay(t time.Time) time.Time {
-	l, err := time.LoadLocation("America/Los_Angeles")
-	if err != nil {
-		panic(err)
-	}
-	newT := t.In(l)
-	return time.Date(newT.Year(), newT.Month(), newT.Day(), 0, 0, 0, 0, newT.Location())
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
 // SetETag sets u's etag to etag in the database.
@@ -218,12 +210,14 @@ func SetETag(u User, etag string) error {
 type Group struct {
 	GID       int       `db:"gid"`
 	CreatedOn time.Time `db:"created_on"`
+	Timezone  string    `db:"timezone"`
 }
 
 var groupSchema = `
 CREATE TABLE IF NOT EXISTS "group" (
   gid SERIAL PRIMARY KEY,
-  created_on timestamp NOT NULL
+  created_on timestamp NOT NULL,
+  timezone string NOT NULL
 )`
 
 func init() {
@@ -250,10 +244,14 @@ func init() {
 
 // CreateGroup creates a group and adds u as its first user.
 func CreateGroup(u User) (Group, error) {
+	// TODO(samertm): Use the user's timezone instead of always
+	// stored "America/Los_Angeles".
+	tz := "America/Los_Angeles"
 	b := &db.Binder{}
 	query := `
 WITH g AS (
-  INSERT INTO "group"(gid, created_on) VALUES (DEFAULT, current_timestamp) RETURNING *
+  INSERT INTO "group"(gid, created_on, timezone)
+    VALUES (DEFAULT, current_timestamp, ` + b.Bind(tz) + `) RETURNING *
 ), i AS (
   INSERT INTO user_group(uid, gid)
     SELECT ` + b.Bind(u.UID) + `, gid FROM g
@@ -351,6 +349,8 @@ func GetGroupAllCommits(g Group) ([]Commit, error) {
 	}
 	var cs []Commit
 	for _, u := range us {
+		// TODO(samertm): Convert CreatedOn to the correct
+		// timezone. Also, give every group a timezone.
 		c, err := GetUserCommits(u, BeginningOfDay(g.CreatedOn))
 		if err != nil {
 			return nil, wrapError(err)
@@ -375,6 +375,17 @@ func UpdateGroupCommits(g Group) error {
 		}
 	}
 	return nil
+}
+
+func GetGroupLocation(g Group) (*time.Location, error) {
+	if g.Timezone == "" {
+		return nil, errors.Errorf("group %d has no timezone", g.GID)
+	}
+	loc, err := time.LoadLocation(g.Timezone)
+	if err != nil {
+		return nil, wrapError(err)
+	}
+	return loc, nil
 }
 
 // Commit represents a Git commit.
@@ -544,8 +555,12 @@ type DayCommitGroup struct {
 // DayCommitGroups groups commits by day, sorted by the most recent
 // day. We do this by sorting all of the commits by time, descending,
 // and then adding them to the current DayCommitGroup until the day
-// changes.
-func DayCommitGroups(commits []Commit) []DayCommitGroup {
+// changes. All of the commit times are determined by loc, but they
+// are not converted. Panics if loc is nil.
+func DayCommitGroups(commits []Commit, loc *time.Location) []DayCommitGroup {
+	if loc == nil {
+		panic("loc must not be nil.")
+	}
 	if len(commits) == 0 {
 		return nil
 	}
@@ -560,12 +575,12 @@ func DayCommitGroups(commits []Commit) []DayCommitGroup {
 	var dcgs []DayCommitGroup
 	// Initialize currentDCG with the first element in commits.
 	var currentDCG DayCommitGroup
-	currentDCG.Day = BeginningOfDay(commits[0].AuthorDate)
+	currentDCG.Day = BeginningOfDay(commits[0].AuthorDate.In(loc))
 	updateDCG(&currentDCG, commits[0])
 	// Loop over the rest of the commits.
 	for i := 1; i < len(commits); i++ {
 		c := commits[i]
-		if b := BeginningOfDay(c.AuthorDate); currentDCG.Day.After(b) {
+		if b := BeginningOfDay(c.AuthorDate.In(loc)); currentDCG.Day.After(b) {
 			// Append old DCG and initialize new DCG.
 			dcgs = append(dcgs, currentDCG)
 			currentDCG = DayCommitGroup{Day: b}

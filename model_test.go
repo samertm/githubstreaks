@@ -36,7 +36,7 @@ func TestDayCommitGroups(t *testing.T) {
 		SHA:        "5",
 		AuthorDate: time.Date(days[2].Year(), days[2].Month(), days[2].Day(), 15, 15, 15, 15, time.UTC),
 	}}
-	dcgs := DayCommitGroups(commits)
+	dcgs := DayCommitGroups(commits, time.UTC)
 	if want := 3; len(dcgs) != want {
 		t.Errorf("Got %d dcgs, wanted %d", dcgs, want)
 	}

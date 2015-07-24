@@ -200,11 +200,15 @@ func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return wrapError(err)
 	}
+	loc, err := GetGroupLocation(g)
+	if err != nil {
+		return wrapError(err)
+	}
 	// SAMER: Check that the user is in the group.
 	return RenderTemplate(groupTemplate, w, groupTemplateVars{
 		Login:           a.User.Login,
 		Group:           g,
-		DayCommitGroups: DayCommitGroups(cs),
+		DayCommitGroups: DayCommitGroups(cs, loc),
 	})
 }
 
