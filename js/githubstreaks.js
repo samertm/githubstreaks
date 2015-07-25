@@ -1,8 +1,10 @@
 import $ from "jquery";
 // Bootstrap requires jQuery to be global.
 window.jQuery = window.$ = $;
-// Require bootstrap from Bower.
-import "../bower_components/bootstrap/dist/js/bootstrap";
+// Require bootstrap from Bower. For some BS reason, "require" works
+// but "import" doesn't (probably has to do with the module inheriting
+// the global scope?)
+require("../bower_components/bootstrap/dist/js/bootstrap");
 
 import debuglog from "./debuglog";
 import * as util from "./util";
