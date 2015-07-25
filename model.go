@@ -51,7 +51,7 @@ type User struct {
 var userSchema = `
 CREATE TABLE IF NOT EXISTS "user" (
   uid SERIAL PRIMARY KEY,
-  login text NOT NULL,
+  login text NOT NULL UNIQUE,
   email text,
   commits_last_updated_on timestamp,
   etag text
@@ -79,6 +79,9 @@ func GetCreateUser(login string) (User, error) {
 		// User exists, return them.
 		return u, nil
 	}
+	// TODO(samertm): Check that err is a "row not found" error,
+	// and log & abort otherwise (hit a bug related to this.)
+
 	// Create the user and then get them.
 	if err := CreateUser(login); err != nil {
 		return User{}, wrapError(err)
