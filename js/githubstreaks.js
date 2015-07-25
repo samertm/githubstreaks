@@ -56,16 +56,7 @@ function createToggle(parentSelector, containerSelector) {
   if (!cgs) {
     return;
   }
-  var days = cgs.find(".day");
-  // If you see more than one day, collapse them!
-  for (var i = 0; i < days.length; i++) {
-    var day = days[i];
-    if (i !== 0) {
-      // Collapse the inner tags for every day but the first!
-      $(day).find(".all-repos").hide();
-    }
-  }
-  // Also, attach links to the days.
+  // Attach toggles to the days.
   $(".day-link").click(createToggle(".day", ".all-repos"));
   $(".repo-link").click(createToggle(".repo", ".all-commits"));
 })();
