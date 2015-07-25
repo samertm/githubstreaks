@@ -1,8 +1,11 @@
-.PHONY: serve watch-serve db-reset psql remote-psql test docker-deps docker-build docker-run docker deploy-deps deploy
+.PHONY: serve browserify watch-serve db-reset psql remote-psql test docker-deps docker-build docker-run docker deploy-deps deploy
 
-serve:
+serve: res/js/bundle.js
 	go install github.com/samertm/githubstreaks
 	githubstreaks
+
+res/js/bundle.js: js/*
+	browserify js/modules.js -d -t [ babelify --sourceMapRelative . ] -o res/js/bundle.js
 
 watch-serve:
 	$(shell while true; do $(MAKE) serve & PID=$$! ; echo $$PID ; inotifywait --exclude ".git" -r -e close_write . ; kill $$PID ; done)

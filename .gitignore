@@ -3,3 +3,5 @@ conf.dev.toml
 conf.prod.toml
 bower_components
 *.test
+node_modules
+res/js/bundle.js

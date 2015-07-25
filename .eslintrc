@@ -1,0 +1,18 @@
+{
+  "env": {
+    "browser": true,
+    "es6": true,
+  },
+  "ecmaFeatures": {
+    "jsx": true,
+  },
+  "parser": "babel-eslint",
+  "rules": {
+    "strict": 0,
+    "comma-dangle": [2, "always-multiline"],
+    "no-console": 0,
+    "no-unused-vars": 0, // TODO(samertm): Figure out why I can't use this: [2, {"vars":
+                         // "local", "args": "after-used"}]
+
+  }
+}
