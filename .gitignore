@@ -5,3 +5,4 @@ bower_components
 *.test
 node_modules
 res/js/bundle.js
+res/js/bundle.map.json

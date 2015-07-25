@@ -1,4 +1,4 @@
-.PHONY: serve browserify watch-serve db-reset psql remote-psql test docker-deps docker-build docker-run docker deploy-deps deploy
+.PHONY: serve build-js-prod watch-serve db-reset psql remote-psql test docker-deps docker-build docker-run docker deploy-deps deploy
 
 serve: res/js/bundle.js
 	go install github.com/samertm/githubstreaks
@@ -6,6 +6,9 @@ serve: res/js/bundle.js
 
 res/js/bundle.js: js/*
 	browserify js/modules.js -d -t [ babelify --sourceMapRelative . ] -o res/js/bundle.js
+
+build-js-prod:
+	browserify js/modules.js -d -p [minifyify --map res/js/bundle.map.json --output res/js/bundle.map.json ] -t [ babelify --sourceMapRelative . ] -o res/js/bundle.js
 
 watch-serve:
 	$(shell while true; do $(MAKE) serve & PID=$$! ; echo $$PID ; inotifywait --exclude ".git" -r -e close_write . ; kill $$PID ; done)
@@ -38,12 +41,12 @@ docker-run:
 docker: docker-build docker-run
 
 # Must specify TO.
-deploy-deps:
+deploy-deps: build-js-prod
 	rsync -azP . $(TO):~/githubstreaks
 	ssh $(TO) 'cd ~/githubstreaks && make docker-deps'
 
 # Must specify TO.
-deploy:
+deploy: build-js-prod
 	rsync -azP . $(TO):~/githubstreaks
 	ssh $(TO) 'cd ~/githubstreaks && make docker'
 
