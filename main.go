@@ -178,7 +178,7 @@ func serveGroupCreate(c web.C, w http.ResponseWriter, r *http.Request) error {
 var groupTemplate = pongo2.Must(pongo2.FromFile("templates/group.html"))
 
 type groupTemplateVars struct {
-	Login           string // SAMER: Add CommonTemplateVars.
+	Login           string
 	Group           Group
 	DayCommitGroups []DayCommitGroup
 }
@@ -204,7 +204,7 @@ func serveGroup(c web.C, w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return wrapError(err)
 	}
-	// SAMER: Check that the user is in the group.
+	// TODO(samertm): Check that the user is in the group.
 	return RenderTemplate(groupTemplate, w, groupTemplateVars{
 		Login:           a.User.Login,
 		Group:           g,
@@ -234,7 +234,6 @@ type groupJoinQuery struct {
 
 func serveGroupJoin(c web.C, w http.ResponseWriter, r *http.Request) error {
 	a := NewApp(c)
-	// SAMER: Set up some sort of auth flow.
 	if redirect := a.Authed(r); redirect != nil {
 		return redirect
 	}
@@ -298,7 +297,7 @@ func main() {
 	goji.Get("/", handler(serveIndex))
 	goji.Get("/login", handler(serveLogin))
 	goji.Get("/github_callback", handler(serveGitHubCallback))
-	// SAMER: Make this POST /user/email.
+	// TODO(samertm): Make this POST /user/email.
 	goji.Post("/save_email", handler(serveSaveEmail))
 
 	goji.Post("/group/create", handler(serveGroupCreate))

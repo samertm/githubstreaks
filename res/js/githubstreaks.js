@@ -1,5 +1,4 @@
-// SAMER: Idiomatic way of doing this?
-// SAMER: Figure out how to use modules :V
+// TODO(samertm): Figure out how to use modules :V
 
 var debug = true;
 
@@ -25,7 +24,7 @@ $(document).ready(function() {
     console.log("Refreshing group data.");
     var url = "/group/" + getGID() + "/refresh";
     $.ajax({
-      type: "post", // SAMER: POST is correct, right?
+      type: "post",
       url: url,
       success: function() {
         // Reload the page.

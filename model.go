@@ -168,8 +168,6 @@ func SetCommitsLastUpdatedOn(u User, t time.Time) error {
 //
 // TODO(samertm): Remove this logic?
 func UpdateTime(u User) (time.Time, error) {
-	// SAMER: Rethink this. I may want to update people even if
-	// they don't belong to a group.
 	if u.CommitsLastUpdatedOn != nil {
 		return *u.CommitsLastUpdatedOn, nil
 	}
@@ -362,7 +360,7 @@ func GetGroupAllCommits(g Group) ([]Commit, error) {
 
 // UpdateGroupCommits updates all of g's users' commits from GitHub.
 //
-// SAMER: Make these methods... Or have a consistant naming scheme +
+// TODO(samertm): Make these methods... Or have a consistant naming scheme +
 // explain in a doc comment.
 func UpdateGroupCommits(g Group) error {
 	us, err := GetGroupUsers(g)
@@ -652,11 +650,7 @@ func SplitRepoName(fullRepoName string) (userName, repoName string) {
 // UpdateUserCommits updates u's commits by fetching them from GitHub
 // and saving them in the database.
 func UpdateUserCommits(u User) error {
-	// SAMER: Do I need this?
-	// t, err := UpdateTime(u)
-	// if err != nil {
-	// 	return wrapError(err)
-	// }
+	// TODO(samertm): Range over results based on UpdateTime.
 	t := NewETagTransport(u.ETag.String)
 	var functionFinishedSuccessfully bool // Set this before returning success.
 	defer func() {
