@@ -3,9 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"net/http"
-	"runtime/debug"
+	runtime_debug "runtime/debug"
 	"strconv"
 	"strings"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/gorilla/schema"
 	"github.com/gorilla/sessions"
 	"github.com/samertm/githubstreaks/conf"
+	"github.com/samertm/githubstreaks/debug"
 	"github.com/zenazn/goji/web"
 )
 
@@ -47,7 +47,7 @@ func getUser(s *sessions.Session) *User {
 	}
 	u, err := GetUser(UserSpec{UID: uid.(int)})
 	if err != nil {
-		log.Printf("Error getting user (uid %d): %s\n", uid, err)
+		debug.Printf("Error getting user (uid %d): %s\n", uid, err)
 		return nil
 	}
 	return &u
@@ -137,9 +137,9 @@ func logError(c web.C, req *http.Request, err error, rv interface{}) {
 		}
 		if rv != nil {
 			fmt.Fprintln(buf, rv)
-			buf.Write(debug.Stack())
+			buf.Write(runtime_debug.Stack())
 		}
-		log.Print(buf.String())
+		debug.Print(buf.String())
 	}
 }
 

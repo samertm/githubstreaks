@@ -1,3 +1,6 @@
+// conf parses the configuration file for githubstreaks. It must not
+// import any githubstreaks libraries to prevent circular
+// dependencies.
 package conf
 
 import (
@@ -16,6 +19,7 @@ type ConfigVars struct {
 	SessionKey         string
 	OAuthStateString   string
 	Debug              string
+	LogglyToken        string
 }
 
 var Config ConfigVars

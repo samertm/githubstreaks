@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/gorilla/context"
 	"github.com/samertm/githubstreaks/conf"
+	"github.com/samertm/githubstreaks/debug"
 	"github.com/zenazn/goji"
 	"github.com/zenazn/goji/web"
 	"golang.org/x/oauth2"
@@ -116,7 +116,7 @@ func serveGitHubCallback(c web.C, w http.ResponseWriter, r *http.Request) error 
 	if err != nil {
 		return wrapErrorf(err, "client.Users.Get() failed")
 	}
-	log.Printf("Logged in as GitHub user: %s\n", *ghUser.Login)
+	debug.Printf("Logged in as GitHub user: %s\n", *ghUser.Login)
 	// Save user to DB.
 	user, err := GetCreateUser(*ghUser.Login)
 	if err != nil {

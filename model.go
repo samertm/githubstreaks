@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 	"github.com/go-errors/errors"
 	"github.com/google/go-github/github"
 	"github.com/samertm/githubstreaks/db"
+	"github.com/samertm/githubstreaks/debug"
 )
 
 // schemas is a list of all of the database schemas. All of the
@@ -660,7 +660,7 @@ func UpdateUserCommits(u User) error {
 		etag := t.GetNewETag()
 		if functionFinishedSuccessfully {
 			if err := SetETag(u, etag); err != nil {
-				log.Println(err)
+				debug.Println(err)
 			}
 		}
 	}()
@@ -682,8 +682,10 @@ func UpdateUserCommits(u User) error {
 
 // CreateCommit creates a commit c for u in the database.
 func CreateCommit(u User, c GitHubCommitRepo) error {
-	if u.Login != *c.Author.Login {
-		// Ignore the commit if the author does not match u.
+	debug.Printf("Creating commit %v for user %s", c, u.Login)
+	if c.Author == nil || u.Login != *c.Author.Login {
+		// Ignore the commit if the commit has no GitHub
+		// author, or the author does not match u.
 		return nil
 	}
 	tx, err := db.DB.Beginx()
