@@ -8,7 +8,8 @@
       <p>People in this group:</p>
       <ul>
       {% for u in GetGroupUsers(v.Group) %}
-        <li>{{ u.Login }}</li>
+      <li>{{ u.Login }}</li>
+      {{ CreateStreakSVG(u, v.Group) }}
       {% endfor %}
       </ul>
       <p>Share this URL with a friend so they can join your group!</p>

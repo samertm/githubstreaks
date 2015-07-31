@@ -163,6 +163,30 @@ func serveSaveEmail(c web.C, w http.ResponseWriter, r *http.Request) error {
 	return &HTTPRedirect{To: "/", Code: http.StatusSeeOther}
 }
 
+func serveUserStatsSVG(c web.C, w http.ResponseWriter, r *http.Request) error {
+	gid, err := getParamInt(c, "group_id")
+	if err != nil {
+		return wrapError(err)
+	}
+	g, err := GetGroup(gid)
+	if err != nil {
+		return wrapError(err)
+	}
+	uid, err := getParamInt(c, "user_id")
+	if err != nil {
+		return wrapError(err)
+	}
+	u, err := GetUser(UserSpec{UID: uid})
+	if err != nil {
+		return wrapError(err)
+	}
+	w.Header().Set("Content-Type", "image/svg+xml")
+	if err := CreateStreakSVG(u, g, w); err != nil {
+		return wrapError(err)
+	}
+	return nil
+}
+
 func serveGroupCreate(c web.C, w http.ResponseWriter, r *http.Request) error {
 	a := NewApp(c)
 	if redirect := a.Authed(r); redirect != nil {
@@ -304,6 +328,7 @@ func main() {
 	goji.Post("/group/:group_id/refresh", handler(serveGroupRefresh))
 	goji.Get("/group/:group_id/join", handler(serveGroupJoin))
 	goji.Get("/group/:group_id", handler(serveGroup))
+	goji.Get("/group/:group_id/user/:user_id/stats.svg", handler(serveUserStatsSVG))
 
 	goji.Serve()
 }
